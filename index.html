@@ -1,0 +1,2509 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#05121f">
+<link rel="icon" href="data:,">
+<title>Fathomflare</title>
+<style>
+  :root {
+    color-scheme: dark;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: #edf7ff;
+    background: #05121f;
+    --ice: #bed6e5;
+    --cyan: #83f2df;
+    --gold: #ffe49b;
+    --border: #477488;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+  body { overscroll-behavior: none; }
+  #stage, .overlay, #fatal { position: fixed; inset: 0; }
+  #stage { touch-action: none; }
+  #stage canvas { display: block; width: 100%; height: 100%; }
+
+  .overlay {
+    z-index: 2;
+    display: none;
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+    place-items: center;
+    padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+      max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+    background: radial-gradient(ellipse at center, #02111b66 25%, #010811bb);
+    --card-edge: #8adacd80;
+  }
+
+  .overlay.show { display: grid; }
+  #ovTitle { background: radial-gradient(ellipse at center, #03111c50 20%, #01091364 77%, #0108129c); }
+  #ovOver { --card-edge: #ec9a7d99; }
+  #ovWin { --card-edge: #ffe49b9c; }
+
+  .card {
+    width: min(100%, 31rem);
+    min-height: 0;
+    max-height: 100%;
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: clamp(20px, 4vw, 35px);
+    border: 1px solid transparent;
+    border-radius: 24px;
+    background:
+      radial-gradient(ellipse at 25% 0%, #1a3b50, #0b2132 57%, #071624) padding-box,
+      linear-gradient(145deg, var(--card-edge), #46738685 46%, #244354) border-box;
+    box-shadow: 0 20px 80px #01060dbb, inset 0 1px #b1e2f21a;
+    text-align: center;
+    scrollbar-color: #4f8193 #0b2132;
+  }
+
+  h1, h2, p { margin: 0; }
+  h1, h2 { line-height: 1.05; letter-spacing: -.045em; }
+  h1 { font-size: clamp(40px, 12vw, 73px); color: #f6fbff; font-weight: 800; }
+  @supports (background-clip: text) {
+    h1 {
+      background: linear-gradient(180deg, #fff 23%, #bfefec);
+      background-clip: text;
+      color: transparent;
+    }
+  }
+  h2 { font-size: clamp(30px, 7vw, 42px); font-weight: 760; text-wrap: balance; }
+  .intro, .help { color: var(--ice); line-height: 1.48; }
+  .intro { max-width: 39ch; margin: 13px auto 0; font-size: .96rem; text-wrap: pretty; }
+  .help { margin: 11px auto 0; max-width: 46ch; font-size: .81rem; }
+  kbd { color: #f0fcff; font: inherit; font-weight: 650; }
+  #best {
+    margin-top: 18px;
+    padding-top: 13px;
+    border-top: 1px solid #6badc638;
+    color: var(--gold);
+    font-size: .88rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 19px; }
+  #ovTitle .actions button { min-width: 102px; }
+
+  button {
+    appearance: none;
+    min-height: 44px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    padding: 7px 17px;
+    background: #123145;
+    color: inherit;
+    font: inherit;
+    font-size: .925rem;
+    font-weight: 690;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  button.primary {
+    background: linear-gradient(180deg, #a1f9e8, var(--cyan));
+    border-color: #a1f9e8;
+    color: #06272c;
+    box-shadow: 0 4px 16px #62e8d62b;
+  }
+
+  @media (hover: hover) {
+    button:hover:enabled { filter: brightness(1.19); }
+  }
+
+  :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  button:enabled:active { filter: brightness(.92); }
+  button:disabled { opacity: .51; cursor: default; }
+  .sound {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 24px;
+    margin-top: 12px;
+    color: var(--ice);
+    font-size: .86rem;
+    cursor: pointer;
+  }
+  .sound input { width: 16px; height: 16px; margin: 0; accent-color: var(--cyan); }
+
+  #practiceList { display: grid; gap: 3px; margin-top: 13px; }
+  .practice-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 3px 0;
+    border-bottom: 1px solid #6badc630;
+    text-align: left;
+  }
+  .practice-row strong { display: block; font-size: .9rem; line-height: 1.18; }
+  .practice-row small { display: block; margin-top: 3px; color: #9bb9cb; font-size: .74rem; }
+  .phase-actions { display: flex; gap: 5px; }
+  .phase-actions button { min-width: 39px; min-height: 36px; padding: 2px 6px; }
+
+  table {
+    width: 100%;
+    margin: 15px 0 0;
+    border-collapse: collapse;
+    font-size: .94rem;
+    font-variant-numeric: tabular-nums;
+  }
+  th, td { padding: 7px 0; border-bottom: 1px solid #6badc633; }
+  th { color: var(--ice); font-weight: 500; text-align: left; }
+  td { color: #f1fbff; font-weight: 650; text-align: right; }
+  #winBadge { margin-top: 12px; color: var(--gold); font-size: .86rem; font-weight: 650; }
+
+  #hud {
+    z-index: 1;
+    position: fixed;
+    inset: 0;
+    display: none;
+    pointer-events: none;
+    user-select: none;
+    font-variant-numeric: tabular-nums;
+    --inset-x: clamp(12px, 2.3vw, 32px);
+    --inset-y: clamp(10px, 2.4vh, 22px);
+  }
+  .playing #hud { display: block; }
+  .hud-edge { position: absolute; }
+  .top-left { top: max(var(--inset-y), env(safe-area-inset-top)); left: max(var(--inset-x), env(safe-area-inset-left)); }
+  .bottom-left { bottom: max(var(--inset-y), env(safe-area-inset-bottom)); left: max(var(--inset-x), env(safe-area-inset-left)); }
+  #score {
+    color: var(--gold);
+    font-size: clamp(.9rem, 2.1vw, 1.35rem);
+    font-weight: 760;
+    line-height: 1.12;
+    text-shadow: 0 1px 6px #01060e;
+  }
+  #lives, #flares, #pips { display: flex; gap: 5px; margin-top: 4px; }
+  .life { position: relative; width: 12px; height: 6px; margin-top: 3px; border-radius: 7px; background: var(--gold); }
+  .life::before { content: ""; position: absolute; top: -2px; left: 5px; width: 4px; height: 3px; border-radius: 2px; background: inherit; }
+  .life::after { content: ""; position: absolute; top: 1px; left: -2px; width: 3px; height: 4px; border-radius: 1px; background: inherit; }
+  .flare-pip { width: 14px; height: 14px; border: 1px solid #6cabba; border-radius: 50%; }
+  .flare-pip.filled { border-color: var(--cyan); background: var(--cyan); box-shadow: inset 0 0 0 3px #123d4b; }
+  #bossHud {
+    position: absolute;
+    top: max(var(--inset-y), env(safe-area-inset-top));
+    left: 50%;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) 3.8ch;
+    align-items: center;
+    gap: 5px 8px;
+    width: min(53%, 24rem);
+    transform: translateX(-50%);
+    text-align: center;
+  }
+  #bossName {
+    grid-column: 1 / -1;
+    color: #f1fcff;
+    font-size: clamp(.76rem, 2.1vw, 1rem);
+    font-weight: 710;
+    line-height: 1.17;
+    text-shadow: 0 1px 6px #01060e;
+  }
+  #pips { justify-content: center; margin: 0; }
+  .phase-pip { width: 7px; height: 7px; border: 1px solid #a6c5d0; border-radius: 50%; }
+  .phase-pip.done { background: #a6c5d0; }
+  .phase-pip.now { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 6px #ffe27a9c; }
+  .bar { height: 5px; background: #04121c93; border-radius: 9px; overflow: hidden; }
+  #hpFill, #glowFill { display: block; width: 100%; height: 100%; border-radius: inherit; transform-origin: left; }
+  #hpFill { background: linear-gradient(90deg, var(--boss-light, #ff9be6), #f2f9ff); }
+  #glowBar { margin-top: 7px; width: 66px; }
+  #glowFill { background: var(--cyan); }
+  #timer {
+    min-height: 1em;
+    color: var(--ice);
+    font-size: .75rem;
+    line-height: 1.1;
+    text-align: right;
+    text-shadow: 0 1px 4px #01060e;
+    white-space: nowrap;
+  }
+  #callout {
+    position: absolute;
+    top: 21%;
+    left: 50%;
+    width: min(80%, 33rem);
+    transform: translateX(-50%);
+    text-align: center;
+    text-shadow: 0 2px 12px #000, 0 0 22px #000;
+  }
+  #callout strong { display: block; font-size: clamp(22px, 5vw, 50px); line-height: 1.05; letter-spacing: -.04em; }
+  #callout small { display: block; margin-top: 4px; color: var(--ice); font-size: .9rem; }
+  #callout small:empty { display: none; }
+  .round {
+    position: absolute;
+    right: max(var(--inset-x), env(safe-area-inset-right));
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    padding: 0;
+    pointer-events: auto;
+    background: #082737ef;
+    box-shadow: inset 0 0 0 2px #6aabb51c, 0 3px 15px #01060d55;
+  }
+  #pauseBtn { top: max(var(--inset-y), env(safe-area-inset-top)); }
+  #pauseBtn span { display: inline-block; width: 12px; height: 13px; border-inline: 3px solid currentColor; vertical-align: middle; }
+  #flareBtn { display: none; bottom: max(var(--inset-y), env(safe-area-inset-bottom)); width: 60px; height: 60px; color: var(--cyan); }
+  .touch #flareBtn { display: block; }
+  #fatal { z-index: 4; display: grid; place-items: center; padding: 22px; text-align: center; background: #05121f; }
+
+  @media (max-width: 420px) {
+    .card { border-radius: 19px; padding-inline: clamp(15px, 5vw, 21px); }
+    .intro { font-size: .89rem; }
+    .phase-actions button { min-width: 34px; min-height: 38px; }
+    .practice-row strong { font-size: .83rem; }
+    #bossHud { gap: 5px 5px; }
+    #pips { gap: 3px; }
+    #pauseBtn { width: 42px; height: 42px; min-height: 42px; }
+    #flareBtn { width: 57px; height: 57px; }
+  }
+
+  @media (max-height: 460px) {
+    .card { width: min(100%, 29rem); padding: 14px 22px; border-radius: 17px; }
+    h1 { font-size: clamp(36px, 7vw, 51px); }
+    h2 { font-size: 32px; }
+    .intro { max-width: 48ch; margin-top: 7px; font-size: .86rem; }
+    #best { margin-top: 11px; padding-top: 8px; }
+    .actions { margin-top: 11px; }
+    .actions button { min-height: 39px; }
+    .help, .sound { margin-top: 7px; }
+    #practiceList { gap: 2px; margin-top: 7px; }
+    .practice-row { min-height: 34px; padding: 1px 0; }
+    .phase-actions button { min-height: 33px; }
+    table { margin-top: 9px; }
+    th, td { padding: 4px 0; }
+    #hud { --inset-y: 8px; }
+    #bossHud { gap: 3px 8px; }
+    #bossName { font-size: .88rem; }
+    #timer { font-size: .72rem; }
+  }
+
+  @media (max-height: 360px) {
+    .card { padding: 10px 18px; border-radius: 15px; }
+    h1 { font-size: 41px; }
+    h2 { font-size: 28px; }
+    .intro { margin-top: 6px; font-size: .83rem; }
+    #best { margin-top: 7px; padding-top: 6px; }
+    #practiceList { gap: 1px; margin-top: 5px; }
+    .practice-row { min-height: 29px; padding: 1px 0; }
+    .phase-actions button { min-height: 26px; }
+    .actions, table { margin-top: 7px; }
+    .actions button { min-height: 34px; }
+    th, td { padding: 3px 0; }
+    .sound, .help { margin-top: 5px; }
+    #winBadge { margin-top: 7px; }
+  }
+</style>
+</head>
+<body>
+<div id="stage" aria-hidden="true"></div>
+
+<div id="hud" aria-label="Dive status">
+  <div class="hud-edge top-left">
+    <div id="score" aria-label="Score"></div>
+    <div id="lives"></div>
+  </div>
+  <div id="bossHud">
+    <div id="bossName"></div>
+    <div id="pips"></div>
+    <div class="bar" id="hpBar" role="progressbar" aria-label="Boss health" aria-valuemin="0" aria-valuemax="100"><span id="hpFill"></span></div>
+    <div id="timer"></div>
+  </div>
+  <div class="hud-edge bottom-left">
+    <div id="flares"></div>
+    <div class="bar" id="glowBar" role="progressbar" aria-label="Glow" aria-valuemin="0" aria-valuemax="40"><span id="glowFill"></span></div>
+  </div>
+  <div id="callout" role="status" hidden><strong></strong><small></small></div>
+  <button id="pauseBtn" class="round" type="button" aria-label="Pause"><span aria-hidden="true"></span></button>
+  <button id="flareBtn" class="round" type="button">Flare</button>
+</div>
+
+<div class="overlay" id="ovTitle">
+  <section class="card" aria-labelledby="titleHeading">
+    <h1 id="titleHeading">Fathomflare</h1>
+    <p class="intro">Five giants of the deep, one small sub. Learn their patterns, slip between their lights, and fly close to steal their glow.</p>
+    <div class="actions">
+      <button id="diveBtn" class="primary" type="button">Dive</button>
+      <button id="practiceBtn" type="button">Practice</button>
+    </div>
+    <p id="best"></p>
+    <p class="help">Move with the arrows, <kbd>WASD</kbd> or a drag. Hold <kbd>Shift</kbd> to focus. Flare with <kbd>X</kbd>, <kbd>Space</kbd> or the touch button. Pause with <kbd>P</kbd> or <kbd>Esc</kbd>. Toggle sound with <kbd>M</kbd>.</p>
+    <label class="sound"><input id="soundBox1" type="checkbox">Sound</label>
+  </section>
+</div>
+<div class="overlay" id="ovPractice">
+  <section class="card" aria-labelledby="practiceHeading">
+    <h2 id="practiceHeading">Practice</h2>
+    <p class="intro">Start any boss you have reached in a dive, from any phase. Hits are counted, never lost.</p>
+    <div id="practiceList"></div>
+    <div class="actions"><button id="practiceBack" type="button">Back</button></div>
+  </section>
+</div>
+<div class="overlay" id="ovPause">
+  <section class="card" aria-labelledby="pauseHeading">
+    <h2 id="pauseHeading">Paused</h2>
+    <div class="actions">
+      <button id="resumeBtn" class="primary" type="button">Resume</button>
+      <button id="quitBtn" type="button">Quit to title</button>
+    </div>
+    <label class="sound"><input id="soundBox2" type="checkbox">Sound</label>
+  </section>
+</div>
+<div class="overlay" id="ovCard">
+  <section class="card" aria-labelledby="cardTitle">
+    <h2 id="cardTitle"></h2>
+    <table id="cardStats"></table>
+    <div class="actions">
+      <button id="cardBtn" class="primary" type="button"></button>
+      <button id="cardTitleBtn" type="button">Title</button>
+    </div>
+  </section>
+</div>
+<div class="overlay" id="ovOver">
+  <section class="card" aria-labelledby="overHeading">
+    <h2 id="overHeading">The deep took you</h2>
+    <table id="overStats"></table>
+    <div class="actions">
+      <button id="retryBtn" class="primary" type="button"></button>
+      <button id="overTitleBtn" type="button">Title</button>
+    </div>
+  </section>
+</div>
+<div class="overlay" id="ovWin">
+  <section class="card" aria-labelledby="winHeading">
+    <h2 id="winHeading">You surfaced</h2>
+    <table id="winStats"></table>
+    <p id="winBadge" hidden>Clean dive: no retry</p>
+    <div class="actions">
+      <button id="winAgainBtn" class="primary" type="button">Dive again</button>
+      <button id="winTitleBtn" type="button">Title</button>
+    </div>
+  </section>
+</div>
+<div id="fatal" role="alert" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // Rules. This section is independent of the DOM and Three.js.
+  const DT = 1 / 60;
+  const RAD = Math.PI / 180;
+  const SUB_RADIUS = 0.14;
+  const GRAZE_DISTANCE = 0.9;
+  const KEY_SPEED = 9;
+  const FOCUS_SPEED = 3.6;
+  const MOVE_LIMIT = 0.3;
+  const SHOT_SPEED = 42;
+  const INTRO_STEPS = 120;
+  const BREAK_STEPS = 90;
+  const DOWN_STEPS = 150;
+  const PHASE_STEPS = 2700;
+  const RADII = { small: 0.16, mid: 0.26, big: 0.42 };
+  const BOSS_LINES = `boss 1 | Pale Bell | r 2.0
+1.1 | hp 240 | move 11 0.6 300 0 4 480 | ring @0/60 n24 v4 a0 s7 mid
+1.2 | hp 280 | move 11 0.6 300 0 4 480 | ring @0/80 n30 v4.5 a0 s6 mid | fan @40/80 n5 v7 aim spread40 small
+1.3 | hp 320 | move 11 0 0 0 3 600 | ring @0/6 n3 v5 a0 s9 small | ring @3/6 n3 v5 a60 s-9 small | ring @60/120 n16 v3.5 a11 big
+boss 2 | Lantern Angler | r 1.8
+2.1 | hp 280 | move 11.5 0 0 0 5 420 | fan @0/60 n3 v8 aim spread24 mid | fan @6/60 n3 v8 aim spread24 mid | fan @12/60 n3 v8 aim spread24 mid | ring @30/60 n24 v3.5 a0 s13 small
+2.2 | hp 310 | move 11.5 0 0 0 4 480 | beam @0/150 aim warn54 live42 hw0.9 | fan @75/150 n9 v6.5 aim spread80 small | ring @0/24 n8 v4 a0 s17 small
+2.3 | hp 340 | move 11.5 0.5 240 0 2 360 | wall @0/40 v6 gap1.8 amp4 per720 ph0 sp0.9 | fan @20/60 n1 v9 aim spread0 mid
+boss 3 | Coil Nautilus | r 1.9
+3.1 | hp 300 | move 11 0.8 400 0 2.5 600 | ring @0/4 n10 v5 a0 s7 small | fan @30/45 n3 v8 aim spread24 mid
+3.2 | hp 340 | move 11 0.8 400 0 2.5 600 | ring @0/6 n8 v5.5 a0 s9 w14 small | ring @3/6 n8 v5.5 a22.5 s-9 w-14 small
+3.3 | hp 380 | move 11 0 0 0 2 500 | ring @0/36 n44 v4.2 a0 s0 w12 mid | ring @18/36 n44 v4.2 a4 s0 w-12 mid | fan @0/80 n3 v8 aim spread20 small
+boss 4 | Gulper Eel | r 1.6
+4.1 | hp 300 | move 12 0 0 0 1.5 300 | wall @0/50 v6 gap1.9 amp4.5 per720 ph0 sp0.8 | ring @20/90 n8 v5 aim s0 small
+4.2 | hp 320 | move 12 0 0 0 4.5 330 | fan @0/8 n2 v7 a180 spread28 mid | rain @0/36 v4 sp3 shift1.5 small
+4.3 | hp 340 | move 12 0 0 0 3 400 | wall @0/45 v6.5 gap2.0 amp5 per600 ph90 sp0.8 | beam @90/240 aim warn60 live36 hw0.7 | fan @30/120 n3 v9 aim spread18 mid
+boss 5 | Abyss Crown | r 2.4
+5.1 | hp 360 | move 11 0 0 0 3 540 | ring @0/70 n28 v6 a0 s5 then30:aim:9 mid | ring @35/70 n24 v4 a0 s9 small | fan @20/40 n1 v10 aim spread0 small
+5.2 | hp 400 | move 11 0 0 0 3 540 | beam @0/120 a170 warn50 live40 hw0.7 | beam @0/120 a190 warn50 live40 hw0.7 | ring @0/5 n8 v5 a0 s-8 small | beam @60/120 aim warn50 live40 hw0.8
+5.3 | hp 460 | move 11 0 0 0 2 600 | ring @0/4 n3 v5.5 a0 s11 small | ring @0/4 n3 v5.5 a60 s-11 small | wall @0/60 v6 gap1.5 amp5 per600 ph0 sp0.9 | fan @30/90 n5 v8 aim spread30 mid | beam @90/180 aim warn54 live36 hw0.7`;
+
+  function parseCue(line) {
+    const [kind, timing, ...words] = line.split(/\s+/);
+    const [start, every] = timing.slice(1).split('/').map(Number);
+    const cue = { kind, start, every, size: 'small', a: 0, s: 0, w: 0 };
+    for (const word of words) {
+      if (word === 'aim') {
+        cue.aim = true;
+      } else if (Object.hasOwn(RADII, word)) {
+        cue.size = word;
+      } else if (word.startsWith('then')) {
+        const [age, direction, speed] = word.slice(4).split(':');
+        cue.then = { age: Number(age), direction, speed: Number(speed) };
+      } else {
+        const [, key, value] = /^([a-z]+)(-?(?:\d+(?:\.\d+)?))$/.exec(word);
+        cue[key] = Number(value);
+      }
+    }
+    return cue;
+  }
+
+  function parseBosses(lines) {
+    const bosses = [null];
+    for (const line of lines.split('\n')) {
+      const [id, label, details, ...cues] = line.split(' | ');
+      if (id.startsWith('boss ')) {
+        bosses[Number(id.slice(5))] = { name: label, r: Number(details.slice(2)), phases: [null] };
+      } else {
+        const [boss, phase] = id.split('.').map(Number);
+        const [x0, ax, tx, y0, ay, ty] = details.slice(5).split(' ').map(Number);
+        bosses[boss].phases[phase] = {
+          hp: Number(label.slice(3)), x0, ax, tx, y0, ay, ty, cues: cues.map(parseCue)
+        };
+      }
+    }
+    return bosses;
+  }
+
+  const BOSSES = parseBosses(BOSS_LINES);
+  const NO_INPUT = { dx: 0, dy: 0, focus: false, flare: false };
+
+  function clamp(value, low, high) {
+    return Math.min(high, Math.max(low, value));
+  }
+
+  function smoothstep(s) {
+    return s * s * (3 - 2 * s);
+  }
+
+  function mix(from, to, fraction) {
+    return from + (to - from) * fraction;
+  }
+
+  function headingDegrees(dx, dy) {
+    return Math.atan2(dy, dx) / (Math.PI / 180);
+  }
+
+  function phaseData(run) {
+    return BOSSES[run.boss].phases[run.phase];
+  }
+
+  function bossPosition(phase, pt) {
+    return {
+      x: phase.tx === 0 ? phase.x0 : phase.x0 + phase.ax * Math.sin(2 * Math.PI * pt / phase.tx),
+      y: phase.ty === 0 ? phase.y0 : phase.y0 + phase.ay * Math.sin(2 * Math.PI * pt / phase.ty)
+    };
+  }
+
+  function keyMove(ux, uy, shift, tall) {
+    const length = Math.hypot(ux, uy);
+    if (length === 0) return { dx: 0, dy: 0 };
+    const factor = (shift ? FOCUS_SPEED : KEY_SPEED) * DT / length;
+    return { dx: (tall ? uy : ux) * factor, dy: (tall ? -ux : uy) * factor };
+  }
+
+  function enterBoss(run, boss, phase) {
+    run.boss = boss;
+    run.phase = phase;
+    run.stage = 'intro';
+    run.stageStep = 0;
+    run.pt = 0;
+    run.bullets = [];
+    run.shots = [];
+    run.beams = [];
+    run.bossSteps = 0;
+    run.bossHits = 0;
+    run.bossGrazes = 0;
+    run.bossScore = run.score;
+    const data = phaseData(run);
+    run.bx = run.fromX = 21;
+    run.by = run.fromY = data.y0;
+    run.hp = 0;
+    run.hpMax = data.hp;
+  }
+
+  function newRun(mode, boss, phase) {
+    const run = {
+      mode, startPhase: phase, step: 0, x: -11, y: 0, focus: false, safe: 0,
+      lives: mode === 'dive' ? 3 : 0, flares: 1, glow: 0, score: 0, retries: 0,
+      hits: 0, grazes: 0, phaseHits: 0, totalFightSteps: 0
+    };
+    enterBoss(run, boss, phase);
+    return run;
+  }
+
+  function startPhase(run, phase) {
+    run.stage = 'fight';
+    run.stageStep = 0;
+    run.pt = 0;
+    run.hp = run.hpMax = phase.hp;
+    run.phaseHits = 0;
+    run.firings = phase.cues.map(() => 0);
+  }
+
+  function nextRunBoss(run) {
+    if (run.mode !== 'dive' || run.stage !== 'card') return false;
+    run.lives = Math.min(5, run.lives + 1);
+    run.x = -11;
+    run.y = 0;
+    run.safe = 0;
+    enterBoss(run, run.boss + 1, 1);
+    return true;
+  }
+
+  function retryRunBoss(run) {
+    if (run.mode !== 'dive' || run.stage !== 'over') return false;
+    run.retries++;
+    run.lives = 3;
+    run.flares = 1;
+    run.glow = 0;
+    run.score = run.bossScore;
+    run.x = -11;
+    run.y = 0;
+    run.safe = 0;
+    enterBoss(run, run.boss, 1);
+    return true;
+  }
+
+  function bulletCenter(bullet, age = bullet.age) {
+    const { ox, oy, h, v, w } = bullet;
+    const t = age * DT;
+    if (w === 0) {
+      return { x: ox + Math.cos(h) * v * t, y: oy + Math.sin(h) * v * t };
+    }
+    const q = v / w;
+    return {
+      x: ox + q * (Math.sin(h + w * t) - Math.sin(h)),
+      y: oy + q * (Math.cos(h) - Math.cos(h + w * t))
+    };
+  }
+
+  function makeBullet(run, ox, oy, degrees, v, kind, turn = 0, then = null) {
+    run.bullets.push({
+      ox, oy, h: degrees * (Math.PI / 180), v, w: turn * (Math.PI / 180), age: 0,
+      r: RADII[kind], kind, then, grazed: false, x: ox, y: oy
+    });
+  }
+
+  function fireCue(run, cue, k, events) {
+    const { bx, by, pt } = run;
+    if (cue.kind === 'wall') {
+      const gy = cue.amp * Math.sin(2 * Math.PI * pt / cue.per + cue.ph * (Math.PI / 180));
+      for (let j = 0; ; j++) {
+        const y = -9 + cue.sp * (j + 0.5);
+        if (y >= 9) break;
+        if (Math.abs(y - gy) >= cue.gap) makeBullet(run, 17, y, 180, cue.v, 'mid');
+      }
+      return;
+    }
+
+    if (cue.kind === 'rain') {
+      const off = (k * cue.shift) % cue.sp;
+      for (let j = 0; ; j++) {
+        const x = -16 + off + j * cue.sp;
+        if (x >= 16) break;
+        makeBullet(run, x, 9.6, -90, cue.v, cue.size);
+      }
+      return;
+    }
+
+    const angle = cue.aim ? headingDegrees(run.x - bx, run.y - by) : cue.a;
+    if (cue.kind === 'beam') {
+      run.beams.push({
+        ox: bx, oy: by, degrees: angle, a: angle * (Math.PI / 180),
+        warn: cue.warn, live: cue.live, hw: cue.hw, age: 0
+      });
+      events.push({ type: 'beamWarn' });
+      return;
+    }
+
+    const base = angle + k * cue.s;
+    for (let i = 0; i < cue.n; i++) {
+      let degrees = base;
+      if (cue.kind === 'ring') degrees += i * 360 / cue.n;
+      if (cue.kind === 'fan' && cue.n > 1) degrees += (i / (cue.n - 1) - 0.5) * cue.spread;
+      makeBullet(run, bx, by, degrees, cue.v, cue.size, cue.w, cue.then);
+    }
+  }
+
+  function stepBullets(run) {
+    run.bullets = run.bullets.filter(bullet => {
+      bullet.age++;
+      const center = bulletCenter(bullet);
+      if (bullet.then && bullet.age === bullet.then.age) {
+        bullet.ox = center.x;
+        bullet.oy = center.y;
+        bullet.h = headingDegrees(run.x - center.x, run.y - center.y) * (Math.PI / 180);
+        bullet.w = 0;
+        bullet.v = bullet.then.speed;
+        bullet.age = 0;
+        bullet.then = null;
+      }
+      bullet.x = center.x;
+      bullet.y = center.y;
+      return bullet.x >= -18 && bullet.x <= 18 && bullet.y >= -10.5 && bullet.y <= 10.5;
+    });
+  }
+
+  function stepBeams(run, events) {
+    run.beams = run.beams.filter(beam => {
+      beam.age++;
+      if (beam.age === beam.warn + 1) events.push({ type: 'beamLive' });
+      return beam.age <= beam.warn + beam.live;
+    });
+  }
+
+  function stepShots(run) {
+    const fighting = run.stage === 'fight';
+    if (fighting && run.pt % 5 === 0) {
+      run.shots.push({ x: run.x + 0.6, y: run.y + 0.18 }, { x: run.x + 0.6, y: run.y - 0.18 });
+    }
+    const boss = BOSSES[run.boss];
+    run.shots = run.shots.filter(shot => {
+      shot.x += SHOT_SPEED * DT;
+      if (fighting && Math.hypot(shot.x - run.bx, shot.y - run.by) < boss.r) {
+        run.hp--;
+        run.score += 10;
+        return false;
+      }
+      return shot.x <= 17;
+    });
+  }
+
+  function stepContact(run, events) {
+    const bulletHit = run.bullets.find(bullet =>
+      Math.hypot(bullet.x - run.x, bullet.y - run.y) < bullet.r + SUB_RADIUS);
+    const hit = bulletHit || run.beams.find(beam => {
+      if (beam.age <= beam.warn) return false;
+      const distance = Math.abs((run.x - beam.ox) * Math.sin(beam.a) - (run.y - beam.oy) * Math.cos(beam.a));
+      return distance < beam.hw + SUB_RADIUS;
+    });
+
+    if (hit) {
+      run.hits++;
+      run.bossHits++;
+      run.phaseHits++;
+      run.safe = 120;
+      events.push({ type: 'hit', cleared: run.bullets });
+      run.bullets = [];
+      run.beams = [];
+      if (run.mode === 'dive') {
+        run.lives--;
+        if (run.lives === 0) {
+          run.stage = 'over';
+          events.push({ type: 'over' });
+        }
+      }
+      return;
+    }
+
+    for (const bullet of run.bullets) {
+      if (bullet.grazed || Math.hypot(bullet.x - run.x, bullet.y - run.y) >= bullet.r + GRAZE_DISTANCE) continue;
+      bullet.grazed = true;
+      run.glow++;
+      run.grazes++;
+      run.bossGrazes++;
+      run.score += 20;
+      events.push({ type: 'graze' });
+    }
+  }
+
+  function finishPhase(run, events) {
+    let type = 'timeUp';
+    if (run.hp <= 0) {
+      run.score += 500 * run.phase + 20 * Math.floor((PHASE_STEPS - run.pt) / 60);
+      if (run.phaseHits === 0) {
+        run.score += 1000;
+        type = 'untouched';
+      } else {
+        type = 'phaseClear';
+      }
+    }
+    events.push({ type, cleared: run.bullets });
+    run.hp = Math.max(0, run.hp);
+    run.score += 5 * run.bullets.length;
+    run.bullets = [];
+    run.beams = [];
+    run.stageStep = 0;
+    run.fromX = run.bx;
+    run.fromY = run.by;
+
+    if (run.phase < 3) {
+      run.phase++;
+      run.stage = 'break';
+      run.hpMax = phaseData(run).hp;
+      run.hp = 0;
+    } else {
+      run.stage = 'down';
+      run.score += 2000 * run.boss;
+      events.push({ type: 'bossDown' });
+    }
+  }
+
+  function stepStage(run, events) {
+    run.stageStep++;
+    const phase = phaseData(run);
+    if (run.stage === 'intro' || run.stage === 'break') {
+      const duration = run.stage === 'intro' ? INTRO_STEPS : BREAK_STEPS;
+      const fraction = smoothstep(run.stageStep / duration);
+      run.bx = mix(run.fromX, phase.x0, fraction);
+      run.by = mix(run.fromY, phase.y0, fraction);
+      if (run.stageStep === duration) startPhase(run, phase);
+    } else if (run.stage === 'down') {
+      run.by = run.fromY - 6 * smoothstep(Math.min(1, run.stageStep / DOWN_STEPS));
+      if (run.stageStep === DOWN_STEPS) {
+        run.totalFightSteps += run.bossSteps;
+        if (run.mode === 'dive' && run.boss === 5) {
+          run.stage = 'won';
+          events.push({ type: 'won' });
+        } else {
+          run.stage = 'card';
+        }
+        return false;
+      }
+    } else if (run.stage === 'fight') {
+      run.pt++;
+      run.bossSteps++;
+      const center = bossPosition(phase, run.pt);
+      run.bx = center.x;
+      run.by = center.y;
+      phase.cues.forEach((cue, index) => {
+        if (run.pt >= cue.start && (run.pt - cue.start) % cue.every === 0) {
+          fireCue(run, cue, run.firings[index]++, events);
+        }
+      });
+    }
+    return true;
+  }
+
+  function isFrozenStage(stage) {
+    return stage === 'card' || stage === 'over' || stage === 'won';
+  }
+
+  function stepRun(run, input) {
+    const events = [];
+    if (isFrozenStage(run.stage)) return events;
+    run.step++;
+
+    // 1. Move and count down safety.
+    let { dx, dy } = input;
+    const length = Math.hypot(dx, dy);
+    if (length > MOVE_LIMIT) {
+      const factor = MOVE_LIMIT / length;
+      dx *= factor;
+      dy *= factor;
+    }
+    run.x = clamp(run.x + dx, -15, 6);
+    run.y = clamp(run.y + dy, -8.3, 8.3);
+    run.focus = input.focus;
+    if (run.safe > 0) run.safe--;
+
+    // 2. Use a flare before any new bullets or beams appear.
+    if (input.flare && run.flares > 0 && run.safe === 0 && run.stage !== 'down') {
+      run.flares--;
+      run.safe = 90;
+      const cleared = [];
+      run.bullets = run.bullets.filter(bullet => {
+        if (Math.hypot(bullet.x - run.x, bullet.y - run.y) >= 6) return true;
+        cleared.push(bullet);
+        return false;
+      });
+      run.score += 5 * cleared.length;
+      run.beams = [];
+      if (run.stage === 'fight') run.hp -= 20;
+      events.push({ type: 'flare', cleared });
+    }
+
+    // 3–6. Stage and cues, bullets, beams, then shots.
+    if (!stepStage(run, events)) return events;
+    stepBullets(run);
+    stepBeams(run, events);
+    stepShots(run);
+
+    // 7. Resolve contact before awarding glow or finishing a phase.
+    if (run.safe === 0) stepContact(run, events);
+    if (run.stage === 'over') return events;
+
+    // 8. Convert glow, with one banked flare's worth at capacity.
+    while (run.glow >= 40 && run.flares < 3) {
+      run.glow -= 40;
+      run.flares++;
+      events.push({ type: 'newFlare' });
+    }
+    if (run.flares === 3 && run.glow > 40) run.glow = 40;
+
+    // 9. Finish a phase after every possible hit and shot on this step.
+    if (run.stage === 'fight' && (run.hp <= 0 || run.pt >= PHASE_STEPS)) finishPhase(run, events);
+    return events;
+  }
+
+  // Browser integration.
+  const byId = id => document.getElementById(id);
+  const fatal = byId('fatal');
+
+  function showFatal(message) {
+    fatal.textContent = message;
+    fatal.hidden = false;
+  }
+
+  if (typeof THREE === 'undefined') {
+    showFatal('Could not load the 3D engine. Check your connection and reload.');
+    return;
+  }
+
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+  } catch {
+    showFatal('This game needs WebGL, which this browser has turned off.');
+    return;
+  }
+
+  const stageElement = byId('stage');
+  stageElement.append(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog('#03182a', 4, 45);
+  const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 160);
+  const HALF_LENS = Math.tan(17.5 * RAD);
+  const ROMANS = ['', 'I', 'II', 'III', 'IV', 'V'];
+  const PALETTES = [null,
+    { small: '#ff8fe0', mid: '#c9a2ff', big: '#ffc8f2', light: '#ff9be6' },
+    { small: '#ffc15a', mid: '#5affd2', big: '#fff0a0', light: '#ffc66b' },
+    { small: '#9dff6e', mid: '#ffdc6e', big: '#d6ffb0', light: '#a8ff7a' },
+    { small: '#6fd6ff', mid: '#b08cff', big: '#dcf2ff', light: '#7ad8ff' },
+    { small: '#ff5a64', mid: '#ff9a4d', big: '#ffd0d0', light: '#ff6b6b' }
+  ];
+  const white = new THREE.Color('#ffffff');
+  const bulletColors = PALETTES.map(palette => palette && Object.fromEntries(
+    Object.keys(RADII).map(kind => {
+      const glow = new THREE.Color(palette[kind]);
+      return [kind, { glow, core: glow.clone().lerp(white, 0.35) }];
+    })
+  ));
+
+  scene.add(new THREE.AmbientLight('#7aa6c8', 1.1));
+  const keyLight = new THREE.DirectionalLight('#bfe8ff', 1.4);
+  keyLight.position.set(-6, 12, 14);
+  scene.add(keyLight);
+
+  function marker(geometry, color, order) {
+    const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
+      color, depthTest: false, depthWrite: false, transparent: true
+    }));
+    mesh.renderOrder = order;
+    scene.add(mesh);
+    return mesh;
+  }
+
+  const hitDisc = marker(new THREE.CircleGeometry(SUB_RADIUS, 32), '#ffffff', 100);
+  const focusRing = marker(new THREE.RingGeometry(0.18, 0.22, 36), '#ff4053', 101);
+
+  function pointTexture(core) {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    const radius = 32 * (core ? 0.906 : 1);
+    const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, radius);
+    if (core) {
+      gradient.addColorStop(0, '#fff');
+      gradient.addColorStop(0.65, '#fff');
+      gradient.addColorStop(1, '#999');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(32, 32, radius, 0, 2 * Math.PI);
+      ctx.fill();
+    } else {
+      gradient.addColorStop(0, 'rgba(255,255,255,0.9)');
+      gradient.addColorStop(0.35, 'rgba(255,255,255,0.34)');
+      gradient.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 64, 64);
+    }
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
+  }
+
+  const softTexture = pointTexture(false);
+  const coreTexture = pointTexture(true);
+
+  function seaGradient() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 2;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    gradient.addColorStop(0, '#0d4a66');
+    gradient.addColorStop(0.45, '#062a40');
+    gradient.addColorStop(1, '#010810');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
+  }
+
+  scene.background = seaGradient();
+
+  const sphere = new THREE.SphereGeometry(1, 20, 14);
+  const smallSphere = new THREE.SphereGeometry(1, 12, 8);
+  const cone = new THREE.ConeGeometry(1, 1, 10);
+  const cylinder = new THREE.CylinderGeometry(1, 1, 1, 16);
+
+  function surface(color, properties = {}) {
+    return new THREE.MeshStandardMaterial({ color, roughness: 0.52, ...properties });
+  }
+
+  function luminous(color) {
+    return new THREE.MeshBasicMaterial({ color });
+  }
+
+  function group(parent, x = 0, y = 0, z = 0) {
+    const object = new THREE.Group();
+    object.position.set(x, y, z);
+    parent.add(object);
+    return object;
+  }
+
+  function part(parent, geometry, material, x, y, z, sx = 1, sy = 1, sz = 1) {
+    const object = new THREE.Mesh(geometry, material);
+    object.position.set(x, y, z);
+    object.scale.set(sx, sy, sz);
+    parent.add(object);
+    return object;
+  }
+
+  function ellipsoid(parent, material, x, y, z, sx, sy, sz) {
+    return part(parent, sphere, material, x, y, z, sx, sy, sz);
+  }
+
+  function ring(parent, material, x, y, z, radius, thickness) {
+    return part(parent, new THREE.TorusGeometry(radius, thickness, 8, 48), material, x, y, z);
+  }
+
+  function fin(parent, material, outline, thickness) {
+    const shape = new THREE.Shape();
+    shape.moveTo(...outline[0]);
+    for (const point of outline.slice(1)) shape.lineTo(...point);
+    shape.closePath();
+    const geometry = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false });
+    geometry.translate(0, 0, -thickness / 2);
+    return part(parent, geometry, material, 0, 0, 0);
+  }
+
+  function rigidTube(parent, material, points, radius) {
+    const curve = new THREE.CatmullRomCurve3(points.map(point => new THREE.Vector3(...point)));
+    return part(parent, new THREE.TubeGeometry(curve, 20, radius, 8, false), material, 0, 0, 0);
+  }
+
+  function halo(parent, color, x, y, z, width, opacity, order = 4, through = false) {
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+      color, map: softTexture, opacity, blending: THREE.AdditiveBlending,
+      depthWrite: false, depthTest: !through, fog: false
+    }));
+    sprite.position.set(x, y, z);
+    sprite.scale.set(width, width, 1);
+    sprite.renderOrder = order;
+    parent.add(sprite);
+    return sprite;
+  }
+
+  function lightAt(parent, color, intensity, distance, x, y, z) {
+    const light = new THREE.PointLight(color, intensity, distance, 2);
+    light.position.set(x, y, z);
+    parent.add(light);
+    return light;
+  }
+
+  function makeSubmarine() {
+    const root = group(scene);
+    const yellow = surface('#ffc93c', { roughness: 0.31, metalness: 0.17 });
+    const ochre = surface('#d68a24', { roughness: 0.35, metalness: 0.25 });
+    const trim = surface('#163447', { metalness: 0.38 });
+    const cyan = luminous('#58f4ff');
+    const lamp = luminous('#fff6b3');
+
+    part(root, new THREE.SphereGeometry(0.5, 32, 20), yellow, 0, 0, 0, 1.05, 0.42, 0.42);
+    ellipsoid(root, ochre, -0.32, -0.03, 0, 0.16, 0.158, 0.17);
+    ellipsoid(root, yellow, -0.07, 0.205, 0, 0.143, 0.078, 0.102);
+    part(root, cylinder, trim, -0.1, 0.288, 0, 0.021, 0.095, 0.021);
+    const periscope = part(root, cylinder, ochre, -0.073, 0.334, 0, 0.022, 0.074, 0.022);
+    periscope.rotation.z = Math.PI / 2;
+    ellipsoid(root, trim, 0.15, 0.046, 0.18, 0.107, 0.097, 0.044);
+    ring(root, ochre, 0.15, 0.046, 0.219, 0.082, 0.014);
+    ellipsoid(root, cyan, 0.15, 0.046, 0.223, 0.069, 0.069, 0.017);
+    ellipsoid(root, lamp, 0.171, 0.072, 0.237, 0.02, 0.014, 0.006);
+    halo(root, '#38dbff', 0.15, 0.046, 0.249, 0.33, 0.44);
+    for (let i = 0; i < 3; i++) {
+      ellipsoid(root, trim, -0.18 - 0.055 * i, -0.068, 0.194 - 0.012 * i, 0.014, 0.029, 0.008);
+    }
+    fin(root, ochre, [[-0.51, 0.013], [-0.48, 0.174], [-0.385, 0.211], [-0.3, 0.092], [-0.35, 0.01]], 0.045);
+    fin(root, yellow, [[-0.49, -0.016], [-0.463, -0.143], [-0.358, -0.168], [-0.30, -0.075]], 0.039);
+    const propeller = group(root, -0.54);
+    ellipsoid(propeller, trim, 0, 0, 0, 0.05, 0.051, 0.051);
+    for (let i = 0; i < 3; i++) {
+      const blade = group(propeller);
+      blade.rotation.x = i * 2 * Math.PI / 3;
+      const paddle = ellipsoid(blade, ochre, 0, 0.089, 0, 0.024, 0.086, 0.033);
+      paddle.rotation.y = -0.55;
+    }
+
+    ellipsoid(root, trim, 0.45, -0.018, 0, 0.087, 0.102, 0.102);
+    ellipsoid(root, lamp, 0.497, -0.018, 0, 0.045, 0.078, 0.078);
+    const length = 2.8;
+    const lightCone = new THREE.ConeGeometry(0.56, length, 32, 10, true);
+    const vertices = lightCone.getAttribute('position');
+    const rgba = new Float32Array(vertices.count * 4);
+    for (let i = 0; i < vertices.count; i++) {
+      const strength = clamp(vertices.getY(i) / length + 0.5, 0, 1);
+      rgba.set([1, 1, 1, 0.26 * strength ** 1.65], i * 4);
+    }
+    lightCone.setAttribute('color', new THREE.BufferAttribute(rgba, 4));
+    const headlight = part(root, lightCone, new THREE.MeshBasicMaterial({
+      color: '#ffda86', vertexColors: true, side: THREE.DoubleSide, transparent: true,
+      depthWrite: false, blending: THREE.AdditiveBlending
+    }), 0.516 + length / 2, -0.018, 0);
+    headlight.rotation.z = Math.PI / 2;
+    headlight.renderOrder = 3;
+    lightAt(root, '#ffd17a', 5, 5, 0.7, 0, 0.22);
+    return { root, propeller };
+  }
+
+  // Each cord reuses the same rings of vertices as its centreline moves.
+  const cordSides = 6;
+  const cordCircle = Array.from({ length: cordSides }, (_, index) => {
+    const angle = index * 2 * Math.PI / cordSides;
+    return [Math.cos(angle), Math.sin(angle)];
+  });
+  const cordPoint = new THREE.Vector3();
+
+  function makeCord(parent, color, tipColor, rootRadius, tipRadius, segments = 16) {
+    const geometry = new THREE.BufferGeometry();
+    const count = (segments + 1) * cordSides;
+    const positions = new THREE.BufferAttribute(new Float32Array(count * 3), 3).setUsage(THREE.DynamicDrawUsage);
+    const colors = new THREE.BufferAttribute(new Float32Array(count * 3), 3);
+    const base = new THREE.Color(color);
+    const tip = new THREE.Color(tipColor);
+    const shade = new THREE.Color();
+    const indices = [];
+    for (let i = 0; i <= segments; i++) {
+      for (let side = 0; side < cordSides; side++) {
+        const index = i * cordSides + side;
+        shade.copy(base).lerp(tip, i / segments).multiplyScalar(0.78 + 0.22 * cordCircle[side][1]);
+        colors.setXYZ(index, shade.r, shade.g, shade.b);
+        if (i === segments) continue;
+        const next = i * cordSides + (side + 1) % cordSides;
+        indices.push(index, next, index + cordSides, next, next + cordSides, index + cordSides);
+      }
+    }
+    geometry.setIndex(indices);
+    geometry.setAttribute('position', positions);
+    geometry.setAttribute('color', colors);
+    const mesh = part(parent, geometry, new THREE.MeshBasicMaterial({
+      vertexColors: true, side: THREE.DoubleSide
+    }), 0, 0, 0);
+    mesh.frustumCulled = false;
+    return { positions, rootRadius, tipRadius, segments };
+  }
+
+  function bendCord(cord, centerline) {
+    for (let i = 0; i <= cord.segments; i++) {
+      const t = i / cord.segments;
+      const radius = mix(cord.rootRadius, cord.tipRadius, t);
+      centerline(cordPoint, t, i);
+      for (let side = 0; side < cordSides; side++) {
+        const [y, z] = cordCircle[side];
+        cord.positions.setXYZ(i * cordSides + side, cordPoint.x, cordPoint.y + radius * y, cordPoint.z + radius * z);
+      }
+    }
+    cord.positions.needsUpdate = true;
+  }
+
+  function trailingCords(parent, count, color, tip, spread, reach) {
+    return Array.from({ length: count }, (_, index) => {
+      const lane = index / (count - 1) * 2 - 1;
+      const length = reach * (0.72 + 0.28 * Math.sin(index * 2.43 + 1.4) ** 2);
+      const cord = makeCord(parent, color, tip, 0.038 + 0.018 * (1 - Math.abs(lane)), 0.009);
+      const glow = halo(parent, tip, 0, 0, 0, 0.29, 0.54);
+      return { lane, length, phase: index * 0.83, spread, cord, glow };
+    });
+  }
+
+  function waveTrails(trails, time) {
+    for (const { lane, length, phase, spread, cord, glow } of trails) {
+      bendCord(cord, (point, t) => point.set(
+        0.11 + length * t,
+        lane * spread * (0.85 - 0.12 * t) + t * (0.18 + 0.24 * t) * Math.sin(time * 3.1 - t * 6 + phase),
+        -0.26 + 0.27 * Math.cos(phase * 2) + 0.23 * t * Math.sin(time * 2.4 - t * 5 + phase)
+      ));
+      glow.position.set(cordPoint.x, cordPoint.y, cordPoint.z + 0.025);
+    }
+  }
+
+  function makePaleBell(root) {
+    const bell = group(root);
+    bell.rotation.y = -0.3;
+    const glass = new THREE.MeshPhysicalMaterial({
+      color: '#f274c5', emissive: '#a43892', emissiveIntensity: 0.38, roughness: 0.29,
+      clearcoat: 0.78, transparent: true, opacity: 0.61, side: THREE.DoubleSide, depthWrite: false
+    });
+    const dome = part(bell, new THREE.SphereGeometry(1.65, 48, 24, 0, 2 * Math.PI, 0, Math.PI / 2),
+      glass, 0, 0, 0, 1, 0.86, 0.83);
+    dome.rotation.z = Math.PI / 2;
+    const core = surface('#ffb3e4', { emissive: '#ff74cc', emissiveIntensity: 0.78, roughness: 0.33 });
+    ellipsoid(bell, core, -0.34, 0.06, 0, 0.69, 0.79, 0.65);
+    ellipsoid(bell, luminous('#ffe0f8'), -0.68, 0.05, 0.49, 0.26, 0.47, 0.19);
+    halo(bell, '#ff79d9', -0.42, 0.05, 0.98, 2.85, 0.57);
+    const rim = ring(bell, luminous('#ff99e2'), 0, 0, 0, 1.6, 0.063);
+    rim.rotation.y = Math.PI / 2;
+    rim.scale.x = 0.83;
+    const rimBeads = luminous('#ffe6fb');
+    for (let i = 0; i < 18; i++) {
+      const angle = i * 2 * Math.PI / 18;
+      part(bell, smallSphere, rimBeads, 0.015, 1.61 * Math.cos(angle), 1.34 * Math.sin(angle), 0.071, 0.071, 0.071);
+    }
+    const trails = trailingCords(root, 9, '#ffb6ef', '#b06ddf', 1.42, 3.15);
+    return time => {
+      const pulse = Math.sin(time * 2.7);
+      bell.scale.set(1 + 0.075 * pulse, 1 - 0.064 * pulse, 1 - 0.064 * pulse);
+      waveTrails(trails, time);
+    };
+  }
+
+  function makeAngler(root) {
+    const skin = surface('#0e5261', { roughness: 0.41 });
+    const finSkin = surface('#164958');
+    const shadow = surface('#102b3a');
+    const black = luminous('#010409');
+    const tooth = surface('#f6f2cc', { emissive: '#8b8d68', emissiveIntensity: 0.24 });
+    ellipsoid(root, skin, 0.12, 0.07, 0, 1.71, 1.10, 0.88);
+    ellipsoid(root, shadow, -1.04, -0.59, 0.08, 1.02, 0.53, 0.71);
+    ellipsoid(root, skin, -1.05, -0.68, 0.39, 0.95, 0.28, 0.59);
+    const mouth = ellipsoid(root, black, -1.07, -0.25, 0.67, 0.87, 0.53, 0.38);
+    mouth.rotation.z = -0.11;
+    for (let i = 0; i < 8; i++) {
+      const s = i / 7;
+      const x = -1.82 + 1.42 * s;
+      const depth = 0.96 + 0.17 * Math.sin(Math.PI * s);
+      const upper = part(root, cone, tooth, x, 0.12 - 0.19 * (2 * s - 1) ** 2, depth, 0.075, 0.31 - 0.09 * s, 0.068);
+      upper.rotation.z = Math.PI - 0.24;
+      if (i < 7) {
+        part(root, cone, tooth, x + 0.09, -0.59 + 0.13 * (2 * s - 1) ** 2, depth, 0.055, 0.22, 0.055).rotation.z = -0.16;
+      }
+    }
+    ellipsoid(root, shadow, -0.88, 0.46, 0.67, 0.54, 0.48, 0.46);
+    ellipsoid(root, tooth, -0.93, 0.49, 0.97, 0.39, 0.37, 0.23);
+    ellipsoid(root, luminous('#6bedc9'), -1.03, 0.48, 1.154, 0.235, 0.26, 0.078);
+    ellipsoid(root, black, -1.095, 0.48, 1.216, 0.119, 0.167, 0.047);
+    ellipsoid(root, luminous('#f3fff8'), -1.062, 0.56, 1.253, 0.044, 0.044, 0.022);
+    const spots = luminous('#4fa697');
+    for (let i = 0; i < 10; i++) {
+      const x = -0.24 + i * 0.15;
+      const z = 0.78 - 0.31 * (i / 9) ** 2;
+      part(root, smallSphere, spots, x, 0.25 + 0.15 * Math.sin(i * 0.7), z, 0.034, 0.038, 0.04);
+    }
+    rigidTube(root, skin, [[-0.56, 0.88, 0.21], [-0.88, 1.55, 0.32], [-1.47, 1.67, 0.45],
+      [-1.97, 1.23, 0.58], [-2.04, 0.88, 0.63]], 0.061);
+    ellipsoid(root, luminous('#ffd078'), -2.04, 0.84, 0.63, 0.165, 0.184, 0.165);
+    ellipsoid(root, luminous('#fff5c3'), -2.06, 0.85, 0.751, 0.102, 0.115, 0.06);
+    halo(root, '#ffab46', -2.04, 0.84, 0.93, 1.46, 0.86);
+    lightAt(root, '#ffbf5c', 6, 5, -2.02, 0.86, 0.9);
+    const tail = group(root, 1.29, 0.04);
+    ellipsoid(tail, skin, 0.27, 0, 0, 0.59, 0.39, 0.36);
+    fin(tail, finSkin, [[0.42, 0], [1.17, 0.76], [1.12, 0.29], [0.99, 0.03], [1.26, -0.61],
+      [0.78, -0.4], [0.42, -0.18]], 0.11);
+    fin(root, finSkin, [[0.18, 0.77], [0.7, 1.42], [0.93, 1.04], [1.28, 0.58]], 0.13);
+    return time => {
+      tail.rotation.y = 0.46 * Math.sin(time * 3.4);
+      tail.rotation.z = 0.1 * Math.sin(time * 2.3);
+    };
+  }
+
+  function makeNautilus(root) {
+    const shellColors = ['#f3dba9', '#d7a377', '#805043', '#be8b63', '#ead0a1'].map(color =>
+      surface(color, { roughness: 0.43 }));
+    const moss = surface('#1b3f3a', { roughness: 0.65 });
+    ellipsoid(root, surface('#534534'), 0.42, 0.1, -0.27, 1.34, 1.39, 0.68);
+    for (let i = 0; i < 46; i++) {
+      const t = i / 45;
+      const angle = -0.14 + (t - 1) * 4.35 * Math.PI;
+      const orbit = 0.145 * Math.exp(2.25 * t);
+      const radius = 0.155 + 0.40 * t ** 1.5;
+      ellipsoid(root, shellColors[Math.floor(i / 2) % shellColors.length],
+        0.43 + orbit * Math.cos(angle), 0.1 + orbit * Math.sin(angle),
+        0.45 - 0.32 * t, radius, radius, radius);
+    }
+    ellipsoid(root, moss, -1.02, -0.21, 0.19, 1.08, 0.74, 0.78);
+    ellipsoid(root, surface('#3d6250'), -0.96, 0.27, 0.25, 1.01, 0.62, 0.78);
+    ellipsoid(root, surface('#101f23'), -1.38, -0.11, 0.55, 0.64, 0.48, 0.55);
+    ellipsoid(root, luminous('#b8ff8f'), -1.58, -0.08, 1.005, 0.184, 0.146, 0.089);
+    ellipsoid(root, luminous('#eefec1'), -1.63, -0.05, 1.081, 0.069, 0.078, 0.025);
+    halo(root, '#9cff75', -1.57, -0.08, 1.124, 1.03, 0.48);
+    halo(root, '#9bdf78', 0.5, 0.02, 0.93, 3.25, 0.19);
+    const arms = Array.from({ length: 8 }, (_, index) =>
+      makeCord(root, '#6f9276', index % 2 ? '#b5ef94' : '#a8c5ac', 0.09 - index * 0.004, 0.018, 12));
+    return time => {
+      arms.forEach((arm, index) => {
+        const lane = index / 7 - 0.5;
+        bendCord(arm, (point, t) => point.set(
+          -1.38 - (0.61 + 0.2 * Math.sin(index * 1.8) ** 2) * t + 0.22 * t ** 3,
+          -0.38 + lane * 0.77 + t * (0.91 * lane + 0.19 * Math.sin(time * 3.3 + index - t * 4)),
+          0.04 + index * 0.092 + 0.18 * t * Math.cos(time * 2.3 - t * 5 + index)
+        ));
+      });
+    };
+  }
+
+  function makeGulper(root) {
+    const skin = surface('#163252', { roughness: 0.46 });
+    const ridge = surface('#265075', { roughness: 0.4 });
+    const voidMaterial = luminous('#01030a');
+    const azure = luminous('#86e6ff');
+    ellipsoid(root, skin, -0.17, 0.12, 0, 1.55, 0.76, 0.69);
+    const throat = ellipsoid(root, skin, -1.0, -0.36, 0.06, 1.28, 0.89, 0.69);
+    throat.rotation.z = -0.14;
+    const maw = ellipsoid(root, voidMaterial, -1.11, -0.36, 0.55, 1.14, 0.74, 0.41);
+    maw.rotation.z = -0.17;
+    rigidTube(root, ridge, [[-2.10, -0.63, 0.71], [-1.79, -0.95, 0.82], [-1.23, -1.03, 0.93],
+      [-0.58, -0.82, 0.85], [-0.19, -0.43, 0.69]], 0.065);
+    rigidTube(root, skin, [[-2.10, -0.63, 0.7], [-1.87, -0.14, 0.83], [-1.32, 0.22, 0.88],
+      [-0.68, 0.15, 0.79], [-0.19, -0.43, 0.69]], 0.065);
+    ellipsoid(root, ridge, -1.13, 0.36, 0.67, 0.37, 0.27, 0.18);
+    ellipsoid(root, azure, -1.22, 0.35, 0.81, 0.176, 0.113, 0.076);
+    ellipsoid(root, luminous('#e0faff'), -1.263, 0.371, 0.873, 0.068, 0.051, 0.028);
+    halo(root, '#6ed4ff', -1.22, 0.35, 0.94, 1.06, 0.57);
+    const spine = makeCord(root, '#173451', '#24405e', 0.49, 0.065, 20);
+    let nextX = 0.44;
+    const body = Array.from({ length: 20 }, (_, index) => {
+      const t = index / 19;
+      nextX += mix(0.38, 0.135, t);
+      const segment = group(root, nextX, 0, 0);
+      const height = mix(0.67, 0.11, t ** 0.78);
+      const width = mix(0.75, 0.16, t);
+      ellipsoid(segment, index % 3 === 0 ? ridge : skin, 0, 0, 0, width, height, height * 0.94);
+      const dotSize = mix(0.076, 0.028, t);
+      part(segment, smallSphere, azure, -0.04, height * 0.2, height * 0.92, dotSize, dotSize, dotSize);
+      return segment;
+    });
+    return (time, view, fraction) => {
+      const inBreak = view.stage === 'break';
+      const phase = BOSSES[view.boss].phases[view.phase - (inBreak ? 1 : 0)];
+      const moving = view.stage !== 'intro';
+      const headY = moving ? bossPosition(phase, view.pt).y : phase.y0;
+      const following = inBreak ? 1 - smoothstep(view.stageStep / BREAK_STEPS) : 1;
+      const scale = BOSSES[view.boss].r / 2;
+      body.forEach((segment, index) => {
+        const delay = (index + 1) * 5;
+        const now = moving ? bossPosition(phase, Math.max(0, view.pt - delay)).y : headY;
+        let offset = now - headY;
+        if (view.stage === 'fight' && view.pt > 0) {
+          const before = bossPosition(phase, Math.max(0, view.pt - 1 - delay)).y;
+          offset = mix(before - bossPosition(phase, view.pt - 1).y, offset, fraction);
+        }
+        segment.position.y = offset * following / scale;
+      });
+      body.forEach((segment, index) => {
+        const near = index === 0 ? rootOrigin : body[index - 1].position;
+        const far = index === body.length - 1 ? segment.position : body[index + 1].position;
+        segment.rotation.z = Math.atan2(far.y - near.y, far.x - near.x);
+      });
+      bendCord(spine, (point, t, index) => point.copy(index === 0 ? rootOrigin : body[index - 1].position));
+    };
+  }
+
+  const rootOrigin = new THREE.Vector3();
+
+  function makeCrown(root) {
+    const armour = surface('#461727', { roughness: 0.42, metalness: 0.21 });
+    const plates = surface('#712638', { metalness: 0.24, roughness: 0.37 });
+    const bone = surface('#f8c6af', { emissive: '#a4473b', emissiveIntensity: 0.41 });
+    const orange = luminous('#ff9141');
+    ellipsoid(root, armour, 0, 0, 0, 1.63, 1.43, 1.0);
+    const trails = trailingCords(root, 11, '#c04455', '#ff7546', 1.43, 3.35);
+    const crown = group(root, 0, 0, 0.13);
+    crown.rotation.y = -0.28;
+    const spokes = group(crown);
+    ring(spokes, bone, 0, 0, 0, 1.52, 0.073);
+    ring(spokes, plates, 0, 0, -0.02, 1.4, 0.093);
+    for (let i = 0; i < 14; i++) {
+      const angle = i * 2 * Math.PI / 14;
+      const mount = group(spokes);
+      mount.rotation.z = angle;
+      const tip = 2.12 + 0.13 * (i % 2);
+      part(mount, cone, bone, (1.48 + tip) / 2, 0, 0, 0.158, tip - 1.48, 0.143).rotation.z = -Math.PI / 2;
+      part(mount, smallSphere, orange, tip, 0, 0, 0.074, 0.074, 0.074);
+      halo(mount, '#ff712b', tip, 0, 0.067, 0.45, 0.57);
+    }
+    ellipsoid(root, plates, -0.41, 0.05, 0.58, 1.07, 0.87, 0.64);
+    ellipsoid(root, luminous('#fff3e4'), -0.56, 0.04, 1.006, 0.85, 0.63, 0.44);
+    ring(root, armour, -0.55, 0.04, 1.109, 0.79, 0.057).scale.y = 0.78;
+    ellipsoid(root, luminous('#ed3e43'), -0.81, 0.025, 1.36, 0.39, 0.43, 0.16);
+    ellipsoid(root, luminous('#220911'), -0.92, 0.019, 1.485, 0.176, 0.26, 0.072);
+    ellipsoid(root, luminous('#fff9ec'), -0.83, 0.17, 1.522, 0.086, 0.08, 0.026);
+    halo(root, '#ff5a4c', -0.76, 0.035, 1.54, 1.28, 0.27);
+    return time => {
+      spokes.rotation.z = time * 0.39;
+      waveTrails(trails, time * 0.76);
+    };
+  }
+
+  const subModel = makeSubmarine();
+  const bossModels = [null, makePaleBell, makeAngler, makeNautilus, makeGulper, makeCrown].map((build, number) => {
+    if (!build) return null;
+    const root = group(scene);
+    root.visible = false;
+    root.scale.setScalar(BOSSES[number].r / 2);
+    lightAt(root, PALETTES[number].light, 8, 10, -0.56, 0.42, 2.1);
+    return { root, pose: build(root) };
+  });
+
+  part(scene, new THREE.PlaneGeometry(0.08, 16.6), new THREE.MeshBasicMaterial({
+    color: '#5ff3e0', opacity: 0.12, transparent: true, depthWrite: false
+  }), 6.7, 0, 0);
+
+  function addPointLayer(geometry, width, texture, options, order) {
+    const points = new THREE.Points(geometry, new THREE.PointsMaterial({
+      size: width / HALF_LENS, map: texture, sizeAttenuation: true,
+      transparent: true, depthWrite: false, ...options
+    }));
+    points.frustumCulled = false;
+    points.renderOrder = order;
+    scene.add(points);
+    return points;
+  }
+
+  function pointAttribute(capacity) {
+    return new THREE.BufferAttribute(new Float32Array(capacity * 3), 3).setUsage(THREE.DynamicDrawUsage);
+  }
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const snowCount = 320;
+  const snowParticles = Array.from({ length: snowCount }, () => ({
+    x: -30 + 60 * Math.random(),
+    y: -18 + 36 * Math.random(),
+    z: -2 - 26 * Math.random(),
+    speed: 0.29 + 0.52 * Math.random()
+  }));
+  const snowPositions = pointAttribute(snowCount);
+  const snowGeometry = new THREE.BufferGeometry().setAttribute('position', snowPositions);
+  addPointLayer(snowGeometry, 0.12, softTexture, { color: '#a9d6e8', opacity: 0.55 }, 1);
+
+  function drawSnow(delta) {
+    const count = reduceMotion.matches ? 105 : snowCount;
+    for (let i = 0; i < count; i++) {
+      const snow = snowParticles[i];
+      const travel = delta * snow.speed;
+      snow.x -= travel * (portrait ? 1 : 0.23);
+      snow.y += travel * (portrait ? 0.23 : -1);
+      if (snow.x < -30) snow.x += 60;
+      if (snow.y < -18) snow.y += 36;
+      if (snow.y > 18) snow.y -= 36;
+      snowPositions.setXYZ(i, snow.x, snow.y, snow.z);
+    }
+    snowPositions.needsUpdate = true;
+    snowGeometry.setDrawRange(0, count);
+  }
+
+  const flareRing = part(scene, new THREE.RingGeometry(0.987, 1, 96), new THREE.MeshBasicMaterial({
+    color: '#b9fff7', transparent: true, depthTest: false, depthWrite: false,
+    blending: THREE.AdditiveBlending
+  }), 0, 0, 0);
+  flareRing.visible = false;
+  flareRing.renderOrder = 20;
+  const damageFlash = halo(scene, '#ffffff', 0, 0, 0, 1, 0, 5, true);
+  damageFlash.visible = false;
+
+  const sparkCapacity = 2048;
+
+  function makeSparkPool(width) {
+    const positions = pointAttribute(sparkCapacity);
+    const colors = pointAttribute(sparkCapacity);
+    const geometry = new THREE.BufferGeometry().setAttribute('position', positions).setAttribute('color', colors);
+    geometry.setDrawRange(0, 0);
+    addPointLayer(geometry, width, softTexture, {
+      vertexColors: true, blending: THREE.AdditiveBlending, depthTest: false
+    }, 18);
+    return { geometry, positions, colors, particles: [], cursor: 0 };
+  }
+
+  const smallSparks = makeSparkPool(0.21);
+  const largeSparks = makeSparkPool(0.39);
+  const sparkPools = [smallSparks, largeSparks];
+  const hitOrange = new THREE.Color('#ff914e');
+  const flareCyan = new THREE.Color('#ccfff5');
+  const bossSparkColors = PALETTES.map(palette => palette && new THREE.Color(palette.light));
+  let visualTime = 0;
+  let lastVisualFrame = null;
+  let hitTime = -Infinity;
+  let hitStep = -Infinity;
+  let flareTime = -Infinity;
+  let flashTime = -Infinity;
+  let sparkRemainder = 0;
+
+  function sparkCount(count) {
+    if (!reduceMotion.matches) return count;
+    const total = count + sparkRemainder;
+    sparkRemainder = total % 3;
+    return Math.floor(total / 3);
+  }
+
+  function spawnSpark(pool, x, y, color, power, life) {
+    const particle = pool.particles[pool.cursor] || {};
+    const angle = Math.random() * 2 * Math.PI;
+    const speed = power * (0.27 + 0.73 * Math.random());
+    particle.x = x;
+    particle.y = y;
+    particle.vx = Math.cos(angle) * speed;
+    particle.vy = Math.sin(angle) * speed;
+    particle.vz = 0.6 * Math.random() - 0.3;
+    particle.life = life * (0.65 + 0.55 * Math.random());
+    particle.start = visualTime;
+    particle.color = color;
+    pool.particles[pool.cursor] = particle;
+    pool.cursor = (pool.cursor + 1) % sparkCapacity;
+  }
+
+  function burst(pool, count, x, y, color, power, life) {
+    const amount = sparkCount(count);
+    for (let i = 0; i < amount; i++) spawnSpark(pool, x, y, color, power, life);
+  }
+
+  function stepEffects(view, events, tookDamage) {
+    if (tookDamage) flashTime = visualTime;
+    let remainingCleared = 220;
+    for (const { type, cleared } of events) {
+      if (type === 'graze') burst(smallSparks, 2, view.x, view.y, white, 2.5, 0.27);
+      if (type === 'hit') {
+        hitTime = visualTime;
+        hitStep = view.step;
+        burst(largeSparks, 46, view.x, view.y, hitOrange, 7.3, 0.62);
+      }
+      if (type === 'flare') {
+        flareTime = visualTime;
+        flareRing.position.set(view.x, view.y, 0);
+        burst(largeSparks, 40, view.x, view.y, flareCyan, 9.2, 0.66);
+      }
+      if (type === 'bossDown') burst(largeSparks, 90, view.bx, view.by, bossSparkColors[view.boss], 7, 1.22);
+      if (cleared && cleared.length && remainingCleared > 0) {
+        const limit = Math.min(remainingCleared, cleared.length);
+        remainingCleared -= limit;
+        const count = sparkCount(limit);
+        for (let i = 0; i < count; i++) {
+          const bullet = cleared[Math.floor((i + 0.5) * cleared.length / count)];
+          spawnSpark(smallSparks, bullet.x, bullet.y, bulletColors[view.boss][bullet.kind].glow, 2.1, 0.48);
+        }
+      }
+    }
+  }
+
+  function resetEffects() {
+    hitTime = hitStep = flareTime = flashTime = -Infinity;
+    sparkRemainder = 0;
+    for (const pool of sparkPools) {
+      pool.particles.length = 0;
+      pool.cursor = 0;
+    }
+    camera.position.x = camera.position.y = 0;
+  }
+
+  function drawEffects(bossRoot, view) {
+    const shakeAge = visualTime - hitTime;
+    const shake = !reduceMotion.matches && shakeAge < 0.35 ? (1 - shakeAge / 0.35) ** 2 : 0;
+    camera.position.x = shake ? 0.24 * shake * Math.sin(shakeAge * 91) : 0;
+    camera.position.y = shake ? 0.16 * shake * Math.sin(shakeAge * 119) : 0;
+
+    const flareAge = visualTime - flareTime;
+    flareRing.visible = flareAge < 0.45;
+    if (flareRing.visible) {
+      const progress = flareAge / 0.45;
+      flareRing.scale.setScalar(6 * progress);
+      flareRing.material.opacity = 0.92 * (1 - progress) ** 0.82;
+    }
+
+    const flashAge = visualTime - flashTime;
+    damageFlash.visible = !!view && flashAge < 0.14;
+    if (damageFlash.visible) {
+      const width = 3.05 * BOSSES[view.boss].r;
+      damageFlash.position.copy(bossRoot.position);
+      damageFlash.scale.set(width, width, 1);
+      damageFlash.material.opacity = 0.53 * (1 - flashAge / 0.14) ** 2;
+    }
+
+    for (const pool of sparkPools) {
+      let count = 0;
+      for (const particle of pool.particles) {
+        const age = visualTime - particle.start;
+        if (age >= particle.life) continue;
+        const bloom = (1 - age / particle.life) ** 1.65;
+        const drift = age / (1 + 1.1 * age);
+        const { r, g, b } = particle.color;
+        pool.positions.setXYZ(count, particle.x + particle.vx * drift,
+          particle.y + particle.vy * drift - 0.43 * age * age, particle.vz * age);
+        pool.colors.setXYZ(count, r * bloom, g * bloom, b * bloom);
+        count++;
+      }
+      pool.geometry.setDrawRange(0, count);
+      if (count) {
+        pool.positions.needsUpdate = true;
+        pool.colors.needsUpdate = true;
+      }
+    }
+  }
+
+  function pointBatch(width, texture, options, order, coreWidth) {
+    const geometry = new THREE.BufferGeometry();
+    const points = addPointLayer(geometry, width, texture, options, order);
+    const core = coreWidth ? addPointLayer(new THREE.BufferGeometry(), coreWidth, coreTexture,
+      { vertexColors: true, depthTest: false }, order + 1) : null;
+    return { points, core, capacity: 0, count: 0 };
+  }
+
+  function preparePoints(batch, count) {
+    if (count > batch.capacity) {
+      const { points, core } = batch;
+      points.geometry.dispose();
+      batch.capacity = Math.max(64, count, batch.capacity * 2);
+      batch.positions = pointAttribute(batch.capacity);
+      points.geometry = new THREE.BufferGeometry().setAttribute('position', batch.positions);
+      if (core) {
+        core.geometry.dispose();
+        batch.glowColors = pointAttribute(batch.capacity);
+        batch.coreColors = pointAttribute(batch.capacity);
+        points.geometry.setAttribute('color', batch.glowColors);
+        core.geometry = new THREE.BufferGeometry()
+          .setAttribute('position', batch.positions)
+          .setAttribute('color', batch.coreColors);
+      }
+    }
+    batch.count = 0;
+    batch.points.geometry.setDrawRange(0, count);
+    batch.points.visible = count > 0;
+    if (batch.core) {
+      batch.core.geometry.setDrawRange(0, count);
+      batch.core.visible = count > 0;
+    }
+  }
+
+  const bulletsBySize = Object.fromEntries(Object.entries(RADII).map(([kind, radius]) => [
+    kind, pointBatch(5 * radius, softTexture,
+      { blending: THREE.AdditiveBlending, vertexColors: true, depthTest: false }, 10, 2 * radius / 0.906)
+  ]));
+  const shotPoints = pointBatch(0.5, softTexture, { color: '#ffe27a', blending: THREE.AdditiveBlending }, 8);
+
+  function drawPoints(run, fraction) {
+    const counts = { small: 0, mid: 0, big: 0 };
+    if (run) for (const bullet of run.bullets) counts[bullet.kind]++;
+    for (const kind of Object.keys(RADII)) preparePoints(bulletsBySize[kind], counts[kind]);
+    preparePoints(shotPoints, run ? run.shots.length : 0);
+    if (!run) return;
+
+    for (const bullet of run.bullets) {
+      const batch = bulletsBySize[bullet.kind];
+      const index = batch.count++;
+      const point = bulletCenter(bullet, Math.max(0, bullet.age - 1 + fraction));
+      const colors = bulletColors[run.boss][bullet.kind];
+      batch.positions.setXYZ(index, point.x, point.y, 0);
+      batch.glowColors.setXYZ(index, colors.glow.r, colors.glow.g, colors.glow.b);
+      batch.coreColors.setXYZ(index, colors.core.r, colors.core.g, colors.core.b);
+    }
+    for (const batch of Object.values(bulletsBySize)) {
+      if (!batch.count) continue;
+      batch.positions.needsUpdate = true;
+      batch.glowColors.needsUpdate = true;
+      batch.coreColors.needsUpdate = true;
+    }
+    if (run.shots.length) {
+      const positions = shotPoints.positions;
+      run.shots.forEach((shot, index) => positions.setXYZ(index, shot.x, shot.y, 0));
+      positions.needsUpdate = true;
+    }
+  }
+
+  const beamPlane = new THREE.PlaneGeometry(40, 1).translate(20, 0, 0);
+  const beamPool = [];
+
+  function makeBeamMesh(order) {
+    const mesh = new THREE.Mesh(beamPlane, new THREE.MeshBasicMaterial({
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+    }));
+    mesh.renderOrder = order;
+    scene.add(mesh);
+    return mesh;
+  }
+
+  function drawBeams(run) {
+    const count = run ? run.beams.length : 0;
+    while (beamPool.length < count) beamPool.push([makeBeamMesh(6), makeBeamMesh(7)]);
+    beamPool.forEach(([body, core], index) => {
+      const beam = index < count ? run.beams[index] : null;
+      const live = beam && beam.age > beam.warn;
+      body.visible = !!beam;
+      core.visible = !!live;
+      if (!beam) return;
+      body.position.set(beam.ox, beam.oy, 0);
+      body.rotation.z = beam.a;
+      body.material.color.set(PALETTES[run.boss].light);
+      body.scale.y = live ? 2 * beam.hw : 0.08;
+      const progress = Math.min(1, beam.age / beam.warn);
+      body.material.opacity = live ? 0.75 :
+        clamp(0.35 + 0.35 * progress + 0.05 * Math.sin(beam.age * 2) * Math.sin(Math.PI * progress), 0.35, 0.7);
+      if (live) {
+        core.position.copy(body.position);
+        core.rotation.z = beam.a;
+        core.scale.y = beam.hw;
+        core.material.opacity = 0.75;
+      }
+    });
+  }
+
+  let portrait = false;
+  let viewWidth = 1;
+  let viewHeight = 1;
+  let pixelsPerUnit = 1;
+
+  function fitCamera() {
+    viewWidth = Math.max(1, window.innerWidth);
+    viewHeight = Math.max(1, window.innerHeight);
+    portrait = viewHeight > 1.05 * viewWidth;
+    const aspect = viewWidth / viewHeight;
+    const neededWidth = portrait ? 21 : 33;
+    const neededHeight = portrait ? 33 : 21;
+    const distance = Math.max(neededHeight / 2, neededWidth / 2 / aspect) / HALF_LENS;
+    pixelsPerUnit = viewHeight / (2 * distance * HALF_LENS);
+    scene.fog.near = distance + 4;
+    scene.fog.far = distance + 45;
+    camera.aspect = aspect;
+    camera.far = Math.max(160, distance + 80);
+    camera.position.set(0, 0, distance);
+    camera.up.set(portrait ? 1 : 0, portrait ? 0 : 1, 0);
+    camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
+    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    renderer.setSize(viewWidth, viewHeight, false);
+  }
+
+  function screenOf(x, y) {
+    x -= camera.position.x;
+    y -= camera.position.y;
+    return {
+      x: viewWidth / 2 + (portrait ? -y : x) * pixelsPerUnit,
+      y: viewHeight / 2 - (portrait ? x : y) * pixelsPerUnit
+    };
+  }
+
+  function draw(run, fraction, visualDelta) {
+    const x = run ? mix(previous.x, run.x, fraction) : -11;
+    const y = run ? mix(previous.y, run.y, fraction) : 0;
+    subModel.root.position.set(x, y, 0);
+    subModel.propeller.rotation.x = visualTime * 26;
+    const stepsSinceHit = run ? run.step - hitStep : Infinity;
+    const blinking = stepsSinceHit < 120 && run.safe > 0;
+    subModel.root.visible = !blinking || stepsSinceHit % 12 < 7;
+    hitDisc.position.set(x, y, 0);
+    focusRing.position.set(x, y, 0);
+    hitDisc.visible = !!run;
+    focusRing.visible = !!run && run.focus;
+
+    const number = run ? run.boss : 1;
+    for (let index = 1; index < bossModels.length; index++) bossModels[index].root.visible = number === index;
+    const { root, pose } = bossModels[number];
+    root.position.set(
+      run ? mix(previous.bx, run.bx, fraction) : 11.5,
+      run ? mix(previous.by, run.by, fraction) : 0.47 * Math.sin(visualTime * 1.31),
+      0
+    );
+    let sink = 0;
+    if (run?.stage === 'down') sink = smoothstep(clamp((run.stageStep - 1 + fraction) / DOWN_STEPS, 0, 1));
+    if (run?.stage === 'card' || run?.stage === 'won') sink = 1;
+    root.rotation.z = -0.49 * sink;
+    root.rotation.y = 0.27 * sink;
+    pose(visualTime, run, fraction);
+    drawSnow(visualDelta);
+    drawPoints(run, fraction);
+    drawBeams(run);
+    drawEffects(root, run);
+    renderer.render(scene, camera);
+  }
+
+  function readRecord(key) {
+    try {
+      return JSON.parse(localStorage.getItem('fathomflare.' + key));
+    } catch {
+      return null;
+    }
+  }
+
+  function writeRecord(key, data) {
+    try {
+      localStorage.setItem('fathomflare.' + key, JSON.stringify(data));
+    } catch {
+      // The current session still keeps its records.
+    }
+  }
+
+  const storedBest = readRecord('best');
+  let best = storedBest && Number.isSafeInteger(storedBest.score) && storedBest.score >= 0 &&
+    typeof storedBest.won === 'boolean' && typeof storedBest.clean === 'boolean' &&
+    (!storedBest.clean || storedBest.won) ?
+    { score: storedBest.score, won: storedBest.won, clean: storedBest.clean } : null;
+  const storedReached = readRecord('reached');
+  let reached = Number.isInteger(storedReached) && storedReached >= 1 && storedReached <= 5 ? storedReached : 1;
+  let soundOn = readRecord('sound') !== false;
+  let run = null;
+  let previous = null;
+  let overlay = '';
+  let paused = false;
+  let frozen = false;
+  let touch = false;
+  let heldInput = null;
+  let requestedFlare = false;
+  let dragPointer = null;
+  let pointerX = 0;
+  let pointerY = 0;
+  let dragX = 0;
+  let dragY = 0;
+  let calloutUntil = 0;
+  let accumulator = 0;
+  let lastFrame = null;
+
+  const keys = new Set();
+  const movementCodes = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+    'KeyA', 'KeyD', 'KeyW', 'KeyS', 'ShiftLeft', 'ShiftRight']);
+  const numberFormat = new Intl.NumberFormat('en-US');
+  const overlays = ['ovTitle', 'ovPractice', 'ovPause', 'ovCard', 'ovOver', 'ovWin'].map(byId);
+  const hud = byId('hud');
+  const callout = byId('callout');
+  const lifeIcons = makeIcons(byId('lives'), 5, 'life');
+  const phaseIcons = makeIcons(byId('pips'), 3, 'phase-pip');
+  const flareIcons = makeIcons(byId('flares'), 3, 'flare-pip');
+  const fields = Object.fromEntries(['score', 'lives', 'bossHud', 'bossName', 'pips', 'hpBar', 'hpFill',
+    'timer', 'flares', 'glowBar', 'glowFill', 'flareBtn'].map(id => [id, byId(id)]));
+
+  function makeIcons(parent, count, className) {
+    return Array.from({ length: count }, () => {
+      const icon = document.createElement('span');
+      icon.className = className;
+      icon.setAttribute('aria-hidden', 'true');
+      parent.append(icon);
+      return icon;
+    });
+  }
+
+  function writeText(element, value) {
+    if (element.textContent !== value) element.textContent = value;
+  }
+
+  function setOverlay(id, mainButton) {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && active !== document.body) active.blur();
+    overlay = id;
+    for (const element of overlays) element.classList.toggle('show', element.id === id);
+    hud.inert = !!id;
+    if (mainButton) byId(mainButton).focus({ preventScroll: true });
+  }
+
+  function bossLabel(boss) {
+    return ROMANS[boss] + ' · ' + BOSSES[boss].name;
+  }
+
+  function formatTime(steps) {
+    const seconds = Math.floor(steps / 60);
+    return Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
+  }
+
+  function updateBest() {
+    if (!run || run.mode !== 'dive') return;
+    const won = run.stage === 'won';
+    const clean = won && run.retries === 0;
+    if (!best || run.score > best.score) {
+      best = { score: run.score, won, clean };
+    } else if (clean || (won && run.score === best.score && !best.won)) {
+      best = { score: best.score, won: true, clean: best.clean || clean };
+    } else {
+      return;
+    }
+    writeRecord('best', best);
+  }
+
+  function updateReached() {
+    if (run.mode === 'dive') {
+      reached = Math.max(reached, run.boss);
+      writeRecord('reached', reached);
+    }
+  }
+
+  function updateTitle() {
+    writeText(byId('best'), best ?
+      'Best dive: ' + numberFormat.format(best.score) +
+        (best.clean ? ' · surfaced without a retry' : best.won ? ' · surfaced' : '') :
+      'No dives yet');
+  }
+
+  function showPractice() {
+    const list = byId('practiceList');
+    list.replaceChildren();
+    for (let boss = 1; boss < BOSSES.length; boss++) {
+      const row = document.createElement('div');
+      const label = document.createElement('div');
+      const title = document.createElement('strong');
+      const controls = document.createElement('div');
+      row.className = 'practice-row';
+      controls.className = 'phase-actions';
+      title.textContent = bossLabel(boss);
+      label.append(title);
+      if (boss > reached) {
+        const hint = document.createElement('small');
+        hint.textContent = 'Reach it in a dive';
+        label.append(hint);
+      }
+      for (let phase = 1; phase <= 3; phase++) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = String(phase);
+        button.setAttribute('aria-label', BOSSES[boss].name + ' phase ' + phase);
+        button.disabled = boss > reached;
+        button.addEventListener('click', () => start('practice', boss, phase));
+        controls.append(button);
+      }
+      row.append(label, controls);
+      list.append(row);
+    }
+    setOverlay('ovPractice', 'practiceBack');
+  }
+
+  function stats(id, entries) {
+    const table = byId(id);
+    table.replaceChildren();
+    const body = table.createTBody();
+    for (const [label, value] of entries) {
+      const row = body.insertRow();
+      const key = document.createElement('th');
+      key.scope = 'row';
+      key.textContent = label;
+      row.append(key);
+      row.insertCell().textContent = String(value);
+    }
+  }
+
+  function showResult() {
+    const boss = BOSSES[run.boss];
+    const endScore = numberFormat.format(run.score);
+    if (run.stage === 'card') {
+      const practice = run.mode === 'practice';
+      const rows = [
+        ['Time', formatTime(run.bossSteps)],
+        ['Hits taken', run.bossHits],
+        ['Near misses', run.bossGrazes]
+      ];
+      if (practice) rows.unshift(['Boss', boss.name]);
+      else rows.push(['Score', numberFormat.format(run.score - run.bossScore)]);
+      writeText(byId('cardTitle'), practice ? 'Practice done' : boss.name + ' sinks');
+      stats('cardStats', rows);
+      writeText(byId('cardBtn'), practice ? 'Practice again' : 'Next: ' + BOSSES[run.boss + 1].name);
+      setOverlay('ovCard', 'cardBtn');
+    } else if (run.stage === 'over') {
+      updateBest();
+      stats('overStats', [['Reached', bossLabel(run.boss)], ['Score', endScore], ['Retries', run.retries]]);
+      writeText(byId('retryBtn'), 'Retry ' + boss.name);
+      setOverlay('ovOver', 'retryBtn');
+    } else if (run.stage === 'won') {
+      updateBest();
+      stats('winStats', [['Score', endScore], ['Time', formatTime(run.totalFightSteps)],
+        ['Hits taken', run.hits], ['Near misses', run.grazes], ['Retries', run.retries]]);
+      byId('winBadge').hidden = run.retries !== 0;
+      setOverlay('ovWin', 'winAgainBtn');
+    }
+  }
+
+  function updateHud() {
+    if (!run) return;
+    writeText(fields.score, numberFormat.format(run.score));
+    fields.lives.setAttribute('aria-label', run.mode === 'dive' ? run.lives + ' lives' : 'Practice');
+    lifeIcons.forEach((icon, index) => { icon.hidden = index >= run.lives; });
+    const label = bossLabel(run.boss) + (run.mode === 'practice' ? ' · practice' : '');
+    if (fields.bossName.textContent !== label) {
+      fields.bossName.textContent = label;
+      fields.bossHud.style.setProperty('--boss-light', PALETTES[run.boss].light);
+    }
+    const finished = run.stage === 'down' || run.stage === 'card' || run.stage === 'won';
+    phaseIcons.forEach((icon, index) => {
+      icon.classList.toggle('done', index + 1 < run.phase || finished);
+      icon.classList.toggle('now', index + 1 === run.phase && !finished);
+    });
+    fields.pips.setAttribute('aria-label', 'Phase ' + run.phase + ' of 3');
+
+    let health = clamp(run.hp / run.hpMax, 0, 1);
+    if (run.stage === 'intro') health = run.stageStep / INTRO_STEPS;
+    if (run.stage === 'break') health = run.stageStep / BREAK_STEPS;
+    fields.hpFill.style.transform = 'scaleX(' + health + ')';
+    fields.hpBar.setAttribute('aria-valuenow', Math.round(100 * health));
+    writeText(fields.timer, run.stage === 'fight' ? Math.floor((PHASE_STEPS - run.pt) / 60) + ' s' : '');
+
+    flareIcons.forEach((icon, index) => icon.classList.toggle('filled', index < run.flares));
+    fields.flares.setAttribute('aria-label', run.flares + ' flares');
+    fields.glowFill.style.transform = 'scaleX(' + clamp(run.glow / 40, 0, 1) + ')';
+    fields.glowBar.setAttribute('aria-valuenow', run.glow);
+    fields.flareBtn.disabled = run.flares === 0;
+    callout.hidden = run.step >= calloutUntil || isFrozenStage(run.stage);
+  }
+
+  function announce(main, detail = '', duration = 90) {
+    writeText(callout.firstElementChild, main);
+    writeText(callout.lastElementChild, detail);
+    calloutUntil = run.step + duration;
+  }
+
+  function syncPositions() {
+    previous = { x: run.x, y: run.y, bx: run.bx, by: run.by };
+  }
+
+  // Audio follows the step events and uses the audio clock for voice scheduling.
+  const pulseIntervals = [72, 84, 96].map(bpm => Math.round(3600 / bpm));
+  let audio = null;
+
+  function unlockAudio() {
+    if (!audio) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      let context;
+      try {
+        context = new AudioContext();
+        const master = context.createGain();
+        const compressor = context.createDynamicsCompressor();
+        const analyser = context.createAnalyser();
+        master.gain.value = soundOn && !paused ? 0.8 : 0;
+        compressor.threshold.value = -14;
+        compressor.ratio.value = 4;
+        compressor.knee.value = 8;
+        compressor.attack.value = 0.003;
+        compressor.release.value = 0.19;
+        analyser.fftSize = 32768;
+        master.connect(compressor);
+        compressor.connect(analyser);
+        analyser.connect(context.destination);
+
+        const filter = lowPass(context, 320);
+        const drone = context.createGain();
+        drone.gain.value = 0.05;
+        filter.connect(drone);
+        drone.connect(master);
+        const when = context.currentTime;
+        for (const hz of [55, 82.4, 110.3]) {
+          const oscillator = context.createOscillator();
+          oscillator.type = 'sine';
+          oscillator.frequency.value = hz;
+          oscillator.connect(filter);
+          oscillator.start(when);
+        }
+        audio = {
+          context, master, analyser, samples: new Float32Array(analyser.fftSize),
+          sampledUntil: Math.round(when * context.sampleRate), peak: 0, lastGraze: -Infinity
+        };
+      } catch {
+        if (context) context.close().catch(() => {});
+        return;
+      }
+    }
+    if (audio.context.state === 'suspended' || audio.context.state === 'interrupted') {
+      audio.context.resume().catch(() => {});
+    }
+  }
+
+  function updateAudioGain() {
+    if (!audio) return;
+    const level = soundOn && !paused ? 0.8 : 0;
+    if (level === 0) sampleAudio();
+    audio.master.gain.setValueAtTime(level, audio.context.currentTime);
+  }
+
+  function lowPass(context, frequency) {
+    const filter = context.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = frequency;
+    return filter;
+  }
+
+  function playVoice(source, output, when, duration, level) {
+    const envelope = audio.context.createGain();
+    envelope.gain.setValueAtTime(0.0001, when);
+    envelope.gain.linearRampToValueAtTime(level, when + 0.01);
+    envelope.gain.exponentialRampToValueAtTime(0.0001, when + duration);
+    output.connect(envelope);
+    envelope.connect(audio.master);
+    source.onended = () => {
+      source.disconnect();
+      if (output !== source) output.disconnect();
+      envelope.disconnect();
+    };
+    source.start(when);
+    source.stop(when + duration);
+  }
+
+  function tone(type, from, to, duration, level, when) {
+    const oscillator = audio.context.createOscillator();
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(from, when);
+    if (from !== to) oscillator.frequency.exponentialRampToValueAtTime(to, when + duration);
+    playVoice(oscillator, oscillator, when, duration, level);
+  }
+
+  function noise(frequency, duration, level, when) {
+    const context = audio.context;
+    const buffer = context.createBuffer(1, Math.round(context.sampleRate * duration), context.sampleRate);
+    const samples = buffer.getChannelData(0);
+    for (let i = 0; i < samples.length; i++) {
+      samples[i] = (2 * Math.random() - 1) * (1 - i / (samples.length - 1));
+    }
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    const filter = lowPass(context, frequency);
+    source.connect(filter);
+    playVoice(source, filter, when, duration, level);
+  }
+
+  function notes(type, pitches, spacing, duration, level, when) {
+    pitches.forEach((hz, index) => tone(type, hz, hz, duration, level, when + index * spacing));
+  }
+
+  function audioPlaying() {
+    return audio && audio.context.state === 'running' && soundOn && !paused;
+  }
+
+  function playStepAudio(events, phase, pt) {
+    if (!audioPlaying()) return;
+    const when = audio.context.currentTime;
+    for (const { type } of events) {
+      switch (type) {
+        case 'graze':
+          if (when - audio.lastGraze >= 0.06) {
+            tone('sine', 1800, 2200, 0.05, 0.05, when);
+            audio.lastGraze = when;
+          }
+          break;
+        case 'hit':
+          noise(900, 0.35, 0.6, when);
+          tone('sine', 140, 40, 0.4, 0.6, when);
+          break;
+        case 'flare':
+          tone('triangle', 220, 1300, 0.45, 0.32, when);
+          noise(2400, 0.4, 0.25, when);
+          break;
+        case 'beamWarn':
+          tone('sine', 380, 760, 0.7, 0.06, when);
+          break;
+        case 'beamLive':
+          tone('sawtooth', 70, 64, 0.6, 0.1, when);
+          break;
+        case 'untouched':
+        case 'phaseClear':
+        case 'timeUp':
+          notes('sine', [523.3, 659.3, 784], 0.06, 1.2, 0.2, when);
+          break;
+        case 'bossDown':
+          tone('sine', 90, 30, 1.4, 0.6, when);
+          noise(600, 1, 0.35, when);
+          notes('triangle', [392, 523.3, 659.3, 784], 0.12, 1.6, 0.16, when + 0.3);
+          break;
+        case 'newFlare':
+          tone('sine', 988, 988, 0.15, 0.14, when);
+          tone('sine', 1318.5, 1318.5, 0.25, 0.14, when + 0.1);
+          break;
+        case 'over':
+          notes('triangle', [392, 349.2, 311.1, 261.6], 0.22, 0.5, 0.18, when);
+          break;
+        case 'won':
+          notes('triangle', [523.3, 659.3, 784, 1046.5, 1318.5], 0.12, 0.6, 0.18, when);
+          break;
+      }
+    }
+    if (phase && pt % pulseIntervals[phase - 1] === 0) {
+      tone('sine', 64, 40, 0.28, phase === 3 ? 0.34 : 0.26, when);
+    }
+  }
+
+  function playExtraLife() {
+    if (audioPlaying()) {
+      notes('triangle', [523.3, 659.3, 784, 1046.5], 0.08, 0.25, 0.14, audio.context.currentTime);
+    }
+  }
+
+  function sampleAudio() {
+    if (!audio) return;
+    const { context, analyser, samples, sampledUntil } = audio;
+    const sampleClock = Math.round(context.currentTime * context.sampleRate);
+    const count = Math.min(samples.length, sampleClock - sampledUntil);
+    if (count <= 0) return;
+    analyser.getFloatTimeDomainData(samples);
+    // Consecutive analyser windows overlap. Only meter samples added since the last read.
+    let peak = audio.peak;
+    for (let i = samples.length - count; i < samples.length; i++) {
+      peak = Math.max(peak, Math.abs(samples[i]));
+    }
+    audio.peak = peak;
+    audio.sampledUntil = sampleClock;
+  }
+
+  function audioPeak() {
+    if (!audio) return -Infinity;
+    sampleAudio();
+    const peak = audio.peak;
+    audio.peak = 0;
+    return 20 * Math.log10(peak);
+  }
+
+  function progress(input) {
+    syncPositions();
+    const wasFighting = run.stage === 'fight';
+    const enteringStepPhase = run.phase;
+    const previousHp = run.hp;
+    const events = stepRun(run, input);
+    const tookDamage = wasFighting && run.hp < previousHp && !events.some(event => event.type === 'timeUp');
+    stepEffects(run, events, tookDamage);
+    const fightPhase = wasFighting || run.stage === 'fight' ? enteringStepPhase : 0;
+    playStepAudio(events, fightPhase, run.pt);
+    for (const { type } of events) {
+      if (type === 'newFlare') announce('Flare ready', 'X or Space');
+      if (type === 'untouched') announce('Untouched', '+1000');
+      if (type === 'phaseClear') announce('Phase cleared');
+      if (type === 'timeUp') announce('Time up', 'no bonus');
+    }
+    if (events.some(event => event.type === 'hit') && run.stage !== 'over') {
+      announce('Hit!', run.mode === 'practice' ? 'Practice: no life lost' : run.lives + ' lives left');
+    }
+    if (isFrozenStage(run.stage)) {
+      clearControls();
+      resetClock();
+      showResult();
+    }
+  }
+
+  function setSound(on) {
+    if (typeof on === 'boolean') {
+      soundOn = on;
+      writeRecord('sound', soundOn);
+    }
+    byId('soundBox1').checked = soundOn;
+    byId('soundBox2').checked = soundOn;
+    updateAudioGain();
+    return { on: soundOn, state: audio ? audio.context.state : 'none' };
+  }
+
+  function clearDrag() {
+    if (dragPointer !== null && stageElement.hasPointerCapture(dragPointer)) {
+      stageElement.releasePointerCapture(dragPointer);
+    }
+    dragPointer = null;
+    dragX = 0;
+    dragY = 0;
+  }
+
+  function clearControls() {
+    keys.clear();
+    clearDrag();
+    requestedFlare = false;
+  }
+
+  function resetClock() {
+    accumulator = 0;
+    lastFrame = null;
+  }
+
+  function isRunning() {
+    return !!run && !paused && !isFrozenStage(run.stage);
+  }
+
+  function start(mode = 'dive', boss = 1, phase = 1) {
+    mode = mode === 'practice' ? 'practice' : 'dive';
+    boss = Number.isInteger(boss) && BOSSES[boss] ? boss : 1;
+    phase = Number.isInteger(phase) && BOSSES[boss].phases[phase] ? phase : 1;
+    if (run && !isFrozenStage(run.stage)) updateBest();
+    run = newRun(mode, boss, phase);
+    paused = false;
+    updateAudioGain();
+    clearControls();
+    resetClock();
+    resetEffects();
+    syncPositions();
+    updateReached();
+    document.body.classList.add('playing');
+    setOverlay('');
+    announce(bossLabel(boss), mode === 'practice' ? 'Practice · phase ' + phase : 'Dive', INTRO_STEPS);
+    updateHud();
+    return state();
+  }
+
+  function title() {
+    if (run && !isFrozenStage(run.stage)) updateBest();
+    run = null;
+    previous = null;
+    paused = false;
+    updateAudioGain();
+    clearControls();
+    resetClock();
+    resetEffects();
+    document.body.classList.remove('playing');
+    updateTitle();
+    setOverlay('ovTitle', 'diveBtn');
+  }
+
+  function afterEntry(detail) {
+    clearControls();
+    resetClock();
+    resetEffects();
+    syncPositions();
+    updateReached();
+    setOverlay('');
+    announce(bossLabel(run.boss), detail, INTRO_STEPS);
+    updateHud();
+  }
+
+  function next() {
+    if (!run || run.stage !== 'card') return;
+    if (run.mode === 'practice') {
+      start('practice', run.boss, run.startPhase);
+      return;
+    }
+    const oldLives = run.lives;
+    if (nextRunBoss(run)) {
+      const extraLife = run.lives > oldLives;
+      afterEntry(extraLife ? '+1 life' : 'Dive');
+      if (extraLife) playExtraLife();
+    }
+  }
+
+  function retry() {
+    if (run && retryRunBoss(run)) afterEntry('Retry ' + run.retries);
+  }
+
+  function pause() {
+    if (!isRunning()) return;
+    paused = true;
+    updateAudioGain();
+    clearControls();
+    resetClock();
+    setOverlay('ovPause', 'resumeBtn');
+  }
+
+  function resume() {
+    if (!run || !paused) return;
+    paused = false;
+    updateAudioGain();
+    resetClock();
+    setOverlay('');
+  }
+
+  function state() {
+    const display = {
+      screen: run ? 'play' : 'title', paused, portrait, touch, sound: soundOn,
+      best: best ? { ...best } : null, reached
+    };
+    if (!run) {
+      return {
+        ...display, mode: null, boss: 0, bossName: '', phase: 0, stage: null, pt: 0,
+        step: 0, hp: 0, hpMax: 0, lives: 0, flares: 0, glow: 0, score: 0, retries: 0,
+        hits: 0, grazes: 0, safe: 0, focus: false, x: -11, y: 0, bx: 11.5, by: 0,
+        bullets: 0, beams: 0, shots: 0
+      };
+    }
+    const { mode, boss, phase, stage, pt, step, hp, hpMax, lives, flares, glow, score,
+      retries, hits, grazes, safe, focus, x, y, bx, by } = run;
+    return {
+      ...display, mode, boss, bossName: BOSSES[boss].name, phase, stage, pt, step, hp, hpMax,
+      lives, flares, glow, score, retries, hits, grazes, safe, focus, x, y, bx, by,
+      bullets: run.bullets.length, beams: run.beams.length, shots: run.shots.length
+    };
+  }
+
+  function holdInput(input) {
+    heldInput = input == null ? null : {
+      dx: Number.isFinite(input.dx) ? input.dx : 0,
+      dy: Number.isFinite(input.dy) ? input.dy : 0,
+      focus: !!input.focus, flare: !!input.flare
+    };
+    clearControls();
+  }
+
+  function advance(n) {
+    const input = heldInput || NO_INPUT;
+    const steps = Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
+    for (let i = 0; i < steps && isRunning(); i++) {
+      progress({ ...input, flare: i === 0 && input.flare });
+    }
+    updateHud();
+    return state();
+  }
+
+  function getBullets() {
+    return run ? run.bullets.map(bullet => {
+      const angle = bullet.h + bullet.w * bullet.age * DT;
+      return {
+        x: bullet.x, y: bullet.y, r: bullet.r, kind: bullet.kind, age: bullet.age,
+        vx: bullet.v * Math.cos(angle), vy: bullet.v * Math.sin(angle)
+      };
+    }) : [];
+  }
+
+  function getBeams() {
+    return run ? run.beams.map(beam => {
+      const live = beam.age > beam.warn;
+      return {
+        x: beam.ox, y: beam.oy, a: beam.degrees, hw: beam.hw, live,
+        left: (live ? beam.warn + beam.live : beam.warn) - beam.age
+      };
+    }) : [];
+  }
+
+  window.game = {
+    state, start, title, next, retry, pause, resume,
+    freeze(on) {
+      frozen = !!on;
+      resetClock();
+    },
+    input: holdInput, advance, bullets: getBullets, beams: getBeams, screenOf,
+    sound: setSound, audioPeak
+  };
+
+  function liveInput(steps) {
+    const ux = Number(keys.has('ArrowRight') || keys.has('KeyD')) -
+      Number(keys.has('ArrowLeft') || keys.has('KeyA'));
+    const uy = Number(keys.has('ArrowUp') || keys.has('KeyW')) -
+      Number(keys.has('ArrowDown') || keys.has('KeyS'));
+    const shift = keys.has('ShiftLeft') || keys.has('ShiftRight');
+    const move = keyMove(ux, uy, shift, portrait);
+    const horizontal = dragX / pixelsPerUnit / steps;
+    const vertical = -dragY / pixelsPerUnit / steps;
+    return {
+      dx: move.dx + (portrait ? vertical : horizontal),
+      dy: move.dy + (portrait ? -horizontal : vertical),
+      focus: shift || dragPointer !== null,
+      flare: requestedFlare
+    };
+  }
+
+  function frame(now) {
+    const visualDelta = paused || frozen || lastVisualFrame === null ? 0 :
+      clamp((now - lastVisualFrame) / 1000, 0, 0.1);
+    visualTime += visualDelta;
+    lastVisualFrame = now;
+    if (isRunning() && !frozen) {
+      if (lastFrame !== null) accumulator += clamp((now - lastFrame) / 1000, 0, 0.1);
+      lastFrame = now;
+      const steps = Math.min(6, Math.floor(accumulator / DT));
+      if (steps > 0) {
+        const input = heldInput || liveInput(steps);
+        dragX = dragY = 0;
+        requestedFlare = false;
+        for (let i = 0; i < steps && isRunning(); i++) {
+          accumulator -= DT;
+          progress(heldInput || { ...input, flare: i === 0 && input.flare });
+        }
+        if (steps === 6) accumulator = 0;
+        updateHud();
+      }
+    }
+    draw(run, isRunning() && !frozen ? clamp(accumulator / DT, 0, 1) : 1, visualDelta);
+    sampleAudio();
+    requestAnimationFrame(frame);
+  }
+
+  function togglePause() {
+    if (paused) resume();
+    else pause();
+  }
+
+  function pressMain() {
+    if (overlay === 'ovCard') next();
+    else if (overlay === 'ovOver') retry();
+    else if (overlay === 'ovWin') start();
+    else if (overlay === 'ovPause') resume();
+    else if (overlay === 'ovTitle') start();
+  }
+
+  document.addEventListener('keydown', event => {
+    if (!event.repeat) unlockAudio();
+    const code = event.code;
+    const onControl = event.target instanceof Element && !!event.target.closest('button, input');
+    if (movementCodes.has(code) && isRunning()) {
+      if (!event.ctrlKey && !event.metaKey && !event.altKey && !heldInput) keys.add(code);
+      event.preventDefault();
+      return;
+    }
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if (code === 'KeyM' && !event.repeat) setSound(!soundOn);
+    if ((code === 'KeyP' || code === 'Escape') && !event.repeat && run && !isFrozenStage(run.stage)) {
+      event.preventDefault();
+      togglePause();
+    }
+    if ((code === 'KeyX' || code === 'Space') && isRunning()) {
+      event.preventDefault();
+      if (!event.repeat && !heldInput) requestedFlare = true;
+    }
+    if (code === 'Enter' && !event.repeat) {
+      if (['ovCard', 'ovOver', 'ovWin'].includes(overlay) || !onControl) {
+        event.preventDefault();
+        pressMain();
+      }
+    }
+  });
+
+  document.addEventListener('keyup', event => keys.delete(event.code));
+  document.addEventListener('pointerdown', event => {
+    unlockAudio();
+    if (event.pointerType === 'touch' && !touch) {
+      touch = true;
+      document.body.classList.add('touch');
+    }
+  }, { capture: true });
+  document.addEventListener('pointerup', event => {
+    if (event.pointerType !== 'mouse' && audio && audio.context.state !== 'running') unlockAudio();
+  }, { capture: true });
+
+  stageElement.addEventListener('pointerdown', event => {
+    if (!isRunning() || heldInput || dragPointer !== null || event.button !== 0) return;
+    stageElement.setPointerCapture(event.pointerId);
+    dragPointer = event.pointerId;
+    pointerX = event.clientX;
+    pointerY = event.clientY;
+    event.preventDefault();
+  });
+
+  function collectDrag(event) {
+    if (event.pointerId !== dragPointer) return;
+    dragX += event.clientX - pointerX;
+    dragY += event.clientY - pointerY;
+    pointerX = event.clientX;
+    pointerY = event.clientY;
+  }
+
+  stageElement.addEventListener('pointermove', collectDrag);
+  stageElement.addEventListener('pointerup', event => {
+    if (event.pointerId !== dragPointer) return;
+    collectDrag(event);
+    dragPointer = null;
+  });
+  for (const type of ['pointercancel', 'lostpointercapture']) {
+    stageElement.addEventListener(type, event => {
+      if (event.pointerId === dragPointer) dragPointer = null;
+    });
+  }
+
+  const actions = {
+    diveBtn: () => start(), practiceBtn: showPractice, practiceBack: title,
+    resumeBtn: resume, quitBtn: title, cardBtn: next, cardTitleBtn: title, retryBtn: retry,
+    overTitleBtn: title, winAgainBtn: () => start(), winTitleBtn: title, pauseBtn: togglePause,
+    flareBtn: () => { if (isRunning() && !heldInput) requestedFlare = true; }
+  };
+  for (const [id, action] of Object.entries(actions)) byId(id).addEventListener('click', action);
+  for (const id of ['soundBox1', 'soundBox2']) {
+    const checkbox = byId(id);
+    checkbox.addEventListener('change', () => setSound(checkbox.checked));
+  }
+
+  window.addEventListener('resize', fitCamera);
+  window.addEventListener('blur', pause);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+
+  fitCamera();
+  setSound();
+  title();
+  requestAnimationFrame(frame);
+}());
+</script>
+</body>
+</html>
